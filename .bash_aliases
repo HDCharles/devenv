@@ -1,13 +1,13 @@
 ############ DIRS ############
-if [ -d ~/devenv ]; then
-    export DEV_ENV_DIR=~/devenv
-elif [ -d ~/network-share/devenv ]; then
-    export DEV_ENV_DIR=~/network-share/devenv
+if [ -d "$HOME/devenv" ]; then
+    export DEV_ENV_DIR="$HOME/devenv"
+elif [ -d "$HOME/network-share/devenv" ]; then
+    export DEV_ENV_DIR="$HOME/network-share/devenv"
 else
     echo "unable to find DEV_ENV_DIR"
 fi
 
-export REPOS="~/repos"
+export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 
 ############ DIRS ############
