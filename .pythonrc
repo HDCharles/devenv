@@ -1,0 +1,8 @@
+import sys
+# Disable any readline/terminal integration that might cause escape sequences
+try:
+    import readline
+    # This prevents the sequences from being output
+    readline.parse_and_bind("set enable-bracketed-paste off")
+except:
+    pass
