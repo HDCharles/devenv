@@ -20,7 +20,9 @@ alias ref='source ~/.bashrc'
 
 ############ COLORS AND ENV ############
 . "$DEV_ENV_DIR/.colors"
+. "$DEV_ENV_DIR/.secrets"
 . ~/rhdev/bin/activate
+
 ############ COMMANDS ############
 
 res () {
