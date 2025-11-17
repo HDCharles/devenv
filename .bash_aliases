@@ -20,14 +20,13 @@ export VISUAL=vim
 ############ ALIASES ############
 alias debug='python -Xfrozen_modules=off -m debugpy --listen 5678 --wait-for-client'
 alias ref='source ~/.bashrc'
-
+alias seebash="code $DEV_ENV_DIR/.bash_aliases"
 ############ COLORS AND ENV ############
 . "$DEV_ENV_DIR/.colors"
 . "$DEV_ENV_DIR/.secrets"
 . ~/rhdev/bin/activate
 
 ############ COMMANDS ############
-
 res () {
     output=$(canhazgpu reserve --gpus "$1" --duration "$2")
     export_cmd=$(echo "$output" | grep "export CUDA_VISIBLE_DEVICES" | tail -1)
@@ -53,6 +52,14 @@ run() {
     # First arg is not an integer
         eval "chg run --gpus 1 -- $*"
     fi
+}
+
+hfread() {
+    HF_TOKEN=$HF_TOKEN_READ
+}
+
+hfwrite() {
+    HF_TOKEN=$HF_TOKEN_WRITE
 }
 
 running() {
@@ -146,6 +153,7 @@ env_setup() {
     uv pip install ruff
     uv pip install pytest
     uv pip install debugpy
+    uv pip install tblib
 
     mkdir repos
     cd repos
@@ -155,6 +163,7 @@ env_setup() {
     git clone https://github.com/vllm-project/speculators
 
     cd vllm
+    uv pip install -e .[test]
     VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
     # uv pip install -e .
     cd ..
