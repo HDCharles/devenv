@@ -143,6 +143,32 @@ gitclean() {
 }
 
 ############ SETUP ############
+
+env_install() {
+    cd
+    . ~/rhdev/bin/activate
+    cd repos
+    cd vllm
+
+    cd speculators
+    uv pip install -e .[dev]
+
+    VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
+    # uv pip install -e .
+    cd ..
+
+    cd llm-compressor
+    uv pip install -e .[dev]
+    cd ..
+
+    cd compressed-tensors
+    uv pip install -e .[dev]
+    cd ..
+
+
+}
+
+
 env_setup() {
     cd
     uv venv --python 3.11 rhdev 
@@ -162,22 +188,9 @@ env_setup() {
     git clone https://github.com/vllm-project/vllm
     git clone https://github.com/vllm-project/speculators
 
-    cd vllm
-    uv pip install -e .[test]
-    VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
-    # uv pip install -e .
-    cd ..
-
-    cd llm-compressor
-    uv pip install -e .[dev]
-    cd ..
-
-    cd compressed-tensors
-    uv pip install -e .[dev]
-
-    cd speculators
-    uv pip install -e .[dev]
+    env_install
 }
+
 
 claude_setup() {
     cd
