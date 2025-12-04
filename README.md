@@ -1,7 +1,7 @@
 1) run:
 
 ```shell
-git clone https://github.com/HDCharles
+git clone https://github.com/HDCharles/devenv
 source devenv/.bash_profile
 ```
 
