@@ -195,8 +195,9 @@ env_setup() {
 claude_setup() {
     cd
     gcloud init
-    echo "add project ID itpc-gcp-ai-eng-claude"
+    
     gcloud auth application-default login
+    echo "add project ID itpc-gcp-ai-eng-claude"
     gcloud auth application-default set-quota-project cloudability-it-gemini
 
     mkdir ~/.npm-global
