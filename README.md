@@ -1,7 +1,7 @@
 1) run:
 
 ```shell
-git clone https://github.com/HDCharles/devenv/edit/main/README.md
+git clone https://github.com/HDCharles
 source devenv/.bash_profile
 ```
 
