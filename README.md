@@ -1,3 +1,6 @@
-1) source .bash_profile to do one-time setup
+1) run:
 
-2) Create .secrets file
+```shell
+git clone https://github.com/HDCharles/devenv/edit/main/README.md
+source devenv/.bash_profile
+```
