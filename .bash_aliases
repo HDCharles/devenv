@@ -1,21 +1,63 @@
-############ UPDATE DEV_ENV ############
-if [ -d "$HOME/devenv" ]; then
-    export DEV_ENV_DIR="$HOME/devenv"
-elif [ -d "$HOME/network-share/devenv" ]; then
-    export DEV_ENV_DIR="$HOME/network-share/devenv"
-else
-    echo "unable to find DEV_ENV_DIR"
+############ ONE TIME SETUP ############
+
+# Set DEV_ENV_DIR to the directory containing this .bash_aliases file
+export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Ensure network-share exists (create symlink if /mnt/data/$USER exists, otherwise create directory)
+if [ ! -e "$HOME/network-share" ]; then
+    if [ -d "/mnt/data/$USER" ]; then
+        ln -s /mnt/data/$USER "$HOME/network-share"
+        echo "Created symlink: $HOME/network-share -> /mnt/data/$USER"
+    else
+        mkdir -p "$HOME/network-share"
+        echo "Created directory: $HOME/network-share"
+    fi
 fi
+
+# Move DEV_ENV_DIR to network-share if it's not already there
+DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
+NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
+
+if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
+    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
+    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
+
+    if [ ! -d "$NEW_LOCATION" ]; then
+        echo "Moving $DEV_ENV_DIR to $NEW_LOCATION..."
+        mv "$DEV_ENV_DIR" "$NEW_LOCATION"
+        export DEV_ENV_DIR="$NEW_LOCATION"
+        echo "DEV_ENV_DIR relocated to network share"
+    else
+        export DEV_ENV_DIR="$NEW_LOCATION"
+    fi
+fi
+
+# Ensure git template is configured
+if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git-template" ]; then
+    if ! grep -q "templateDir = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
+        git config --global init.templateDir "$DEV_ENV_DIR/.git-template"
+        echo "Git template configured: $DEV_ENV_DIR/.git-template"
+    fi
+fi
+
+############ UPDATE DEVENV ############
 
 # Auto-update DEV_ENV_DIR from git
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
-    git_output=$(cd "$DEV_ENV_DIR" && git pull 2>/dev/null)
-    if [[ "$git_output" != "Already up to date." ]] && [[ -n "$git_output" ]]; then
+    git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
+    git_exit_code=$?
+
+    # Only reload if git pull succeeded (exit code 0) and made changes
+    if [ $git_exit_code -eq 0 ] && [[ "$git_output" != "Already up to date." ]]; then
         echo "DEV_ENV updated from git. Reloading bash aliases..."
         source ~/.bashrc
         return 2>/dev/null || exit
+    elif [ $git_exit_code -ne 0 ]; then
+        echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
     fi
 fi
+
+
 
 ############ DIRS ############
 
