@@ -215,7 +215,7 @@ env_setup() {
     git clone https://github.com/vllm-project/vllm
     git clone https://github.com/vllm-project/speculators
 
-    env_install
+    echo "call `env_install` to complete setup"
 }
 
 
