@@ -239,6 +239,20 @@ claude_setup() {
 # Track if any setup changes are made
 SETUP_CHANGED=0
 
+# Loop detection: prevent infinite reloads
+if [ -z "$BASH_PROFILE_RELOAD_COUNT" ]; then
+    export BASH_PROFILE_RELOAD_COUNT=0
+else
+    export BASH_PROFILE_RELOAD_COUNT=$((BASH_PROFILE_RELOAD_COUNT + 1))
+
+    if [ $BASH_PROFILE_RELOAD_COUNT -ge 3 ]; then
+        echo "ERROR: .bash_profile has reloaded $BASH_PROFILE_RELOAD_COUNT times."
+        echo "Please manually review and fix these issues, call `seebash` to see the .bash_profile"
+        unset BASH_PROFILE_RELOAD_COUNT
+        return 2>/dev/null || exit 1
+    fi
+fi
+
 # Ensure network-share exists (create symlink if /mnt/data/$USER exists, otherwise create directory)
 if [ ! -e "$HOME/network-share" ]; then
     if [ -d "/mnt/data/$USER" ]; then
@@ -352,8 +366,10 @@ if ! command -v claude &> /dev/null; then
     SETUP_CHANGED=1
 fi
 
-# Check for required VSCode extensions
+
+# Check for required VSCode extensions (run in background)
 if command -v code &> /dev/null; then
+    # (
     REQUIRED_EXTENSIONS=(
         "anthropic.claude-code"
         "eamodio.gitlens"
@@ -365,13 +381,24 @@ if command -v code &> /dev/null; then
         "zhoukz.safetensors"
     )
 
+    # Get list of installed extensions once
+    INSTALLED_EXTENSIONS=$(code --list-extensions)
+
     for ext in "${REQUIRED_EXTENSIONS[@]}"; do
-        if ! code --list-extensions | grep -q "^$ext$"; then
+        if ! echo "$INSTALLED_EXTENSIONS" | grep -q "^$ext$"; then
             echo "Installing VSCode extension: $ext"
-            code --install-extension "$ext"
-            SETUP_CHANGED=1
+            output=$(code --install-extension "$ext" 2>&1)
+            echo "$output"
+
+            # Check if installation was successful by looking for success indicators in output
+            if echo "$output" | grep -qi "successfully installed"; then
+                :
+            else
+                echo "Unable to install extension $ext, please install manually to avoid triggering this on each restart"
+            fi
         fi
     done
+    # ) &
 fi
 
 # Setup launch.json for VSCode debugging via symlink
@@ -390,8 +417,10 @@ fi
 
 # Refresh bash profile if any setup changes were made
 if [ $SETUP_CHANGED -eq 1 ]; then
-
     echo "Some setup changes were made. Reloading bash aliases..."
     source ~/.bashrc
     return 2>/dev/null || exit
+else
+    # Reset the counter on successful load without changes
+    unset BASH_PROFILE_RELOAD_COUNT
 fi
