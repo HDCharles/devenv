@@ -10,6 +10,23 @@ fi
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 
+# Check if HF_HUB_CACHE is already set
+if [ -z "$HF_HUB_CACHE" ]; then
+    # Check if network share exists
+    if [ -d "$HOME/network-share" ]; then
+        HF_HUB_CACHE="$HOME/network-share/hf_hub"
+    else
+        HF_HUB_CACHE="$HOME/hf_hub"
+    fi
+
+    # Check if the hf_hub directory exists, create if it doesn't
+    if [ ! -d "$HF_HUB_CACHE" ]; then
+        echo "Creating HuggingFace cache directory: $HF_HUB_CACHE"
+        mkdir -p "$HF_HUB_CACHE"
+    fi
+fi
+
+
 ############ DIRS ############
 export CLAUDE_CODE_USE_VERTEX=1
 export CLOUD_ML_REGION=us-east5
