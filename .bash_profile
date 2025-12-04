@@ -374,6 +374,20 @@ if command -v code &> /dev/null; then
     done
 fi
 
+# Setup launch.json for VSCode debugging via symlink
+if [ -d "$REPOS" ]; then
+    VSCODE_DIR="$REPOS/.vscode"
+    LAUNCH_JSON="$VSCODE_DIR/launch.json"
+    TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
+
+    if [ ! -e "$LAUNCH_JSON" ]; then
+        mkdir -p "$VSCODE_DIR"
+        ln -s "$TEMPLATE_LAUNCH" "$LAUNCH_JSON"
+        echo "Created symlink: $LAUNCH_JSON -> $TEMPLATE_LAUNCH"
+        SETUP_CHANGED=1
+    fi
+fi
+
 # Refresh bash profile if any setup changes were made
 if [ $SETUP_CHANGED -eq 1 ]; then
 
