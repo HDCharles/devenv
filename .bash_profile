@@ -42,6 +42,7 @@ if [ -f ~/.bashrc ]; then
     fi
 fi
 
+# Setup .gitconfig
 if [ -n "$DEV_ENV_DIR" ]; then
     if ! grep -qF "template = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
         echo "" >> ~/.gitconfig
@@ -49,6 +50,18 @@ if [ -n "$DEV_ENV_DIR" ]; then
         echo "	template = $DEV_ENV_DIR/.git-template" >> ~/.gitconfig
         echo "Git commit template configured: $DEV_ENV_DIR/.git-template"
     fi
+fi
+
+# Check if rhdev virtual environment exists, if not run env_setup
+if [ ! -d "$HOME/rhdev" ]; then
+    echo "rhdev virtual environment not found. Running env_setup..."
+    env_setup
+fi
+
+# Check if claude-code is installed, if not run claude_setup
+if ! command -v claude &> /dev/null; then
+    echo "Claude Code not found. Running claude_setup..."
+    claude_setup
 fi
 
 ############ UPDATE DEVENV ############
