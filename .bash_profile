@@ -42,11 +42,12 @@ if [ -f ~/.bashrc ]; then
     fi
 fi
 
-# Ensure git template is configured
-if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git-template" ]; then
-    if ! grep -q "templateDir = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
-        git config --global init.templateDir "$DEV_ENV_DIR/.git-template"
-        echo "Git template configured: $DEV_ENV_DIR/.git-template"
+if [ -n "$DEV_ENV_DIR" ]; then
+    if ! grep -qF "template = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
+        echo "" >> ~/.gitconfig
+        echo "[commit]" >> ~/.gitconfig
+        echo "	template = $DEV_ENV_DIR/.git-template" >> ~/.gitconfig
+        echo "Git commit template configured: $DEV_ENV_DIR/.git-template"
     fi
 fi
 
@@ -54,7 +55,6 @@ fi
 
 # Auto-update DEV_ENV_DIR from git
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
-    echo "we in"
     git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
     git_exit_code=$?
     # Only reload if git pull succeeded (exit code 0) and made changes
