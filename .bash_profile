@@ -1,72 +1,4 @@
-############ ONE TIME SETUP ############
-
-# Set DEV_ENV_DIR to the directory containing this .bash_profile file
-export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Ensure network-share exists (create symlink if /mnt/data/$USER exists, otherwise create directory)
-if [ ! -e "$HOME/network-share" ]; then
-    if [ -d "/mnt/data/$USER" ]; then
-        ln -s /mnt/data/$USER "$HOME/network-share"
-        echo "Created symlink: $HOME/network-share -> /mnt/data/$USER"
-    else
-        mkdir -p "$HOME/network-share"
-        echo "Created directory: $HOME/network-share"
-    fi
-fi
-
-# Move DEV_ENV_DIR to network-share if it's not already there
-DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
-NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
-
-if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
-    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
-    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
-
-    if [ ! -d "$NEW_LOCATION" ]; then
-        echo "Moving $DEV_ENV_DIR to $NEW_LOCATION..."
-        mv "$DEV_ENV_DIR" "$NEW_LOCATION"
-        export DEV_ENV_DIR="$NEW_LOCATION"
-        echo "DEV_ENV_DIR relocated to network share"
-    else
-        export DEV_ENV_DIR="$NEW_LOCATION"
-    fi
-fi
-
-# After relocation, ensure .bashrc sources the .bash_profile from new location
-if [ -f ~/.bashrc ]; then
-    # Check if there's already a line sourcing this file
-    if ! grep -qF "$DEV_ENV_DIR/.bash_profile" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo ". \"$DEV_ENV_DIR/.bash_profile\"" >> ~/.bashrc
-        echo "Added .bash_profile sourcing to ~/.bashrc"
-    fi
-fi
-
-# Setup .gitconfig
-if [ -n "$DEV_ENV_DIR" ]; then
-    if ! grep -qF "template = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
-        echo "" >> ~/.gitconfig
-        echo "[commit]" >> ~/.gitconfig
-        echo "	template = $DEV_ENV_DIR/.git-template" >> ~/.gitconfig
-        echo "Git commit template configured: $DEV_ENV_DIR/.git-template"
-    fi
-fi
-
-# Check if rhdev virtual environment exists, if not run env_setup
-if [ ! -d "$HOME/rhdev" ]; then
-    echo "rhdev virtual environment not found. Running env_setup..."
-    env_setup
-fi
-
-# Check if claude-code is installed, if not run claude_setup
-if ! command -v claude &> /dev/null; then
-    echo "Claude Code not found. Running claude_setup..."
-    claude_setup
-fi
-
-############ UPDATE DEVENV ############
-
-# Auto-update DEV_ENV_DIR from git
+############ AUTO UPDATE DEVENV ############
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
     git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
     git_exit_code=$?
@@ -81,7 +13,7 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
 fi
 
 ############ DIRS ############
-
+export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 
@@ -93,13 +25,8 @@ if [ -z "$HF_HUB_CACHE" ]; then
     else
         HF_HUB_CACHE="$HOME/hf_hub"
     fi
-
-    # Check if the hf_hub directory exists, create if it doesn't
-    if [ ! -d "$HF_HUB_CACHE" ]; then
-        echo "Creating HuggingFace cache directory: $HF_HUB_CACHE"
-        mkdir -p "$HF_HUB_CACHE"
-    fi
 fi
+
 ############ VARS ############
 export CLAUDE_CODE_USE_VERTEX=1
 export CLOUD_ML_REGION=us-east5
@@ -111,10 +38,20 @@ export VISUAL=vim
 alias debug='python -Xfrozen_modules=off -m debugpy --listen 5678 --wait-for-client'
 alias ref='source ~/.bashrc'
 alias seebash="code $DEV_ENV_DIR/.bash_profile"
-############ COLORS AND SECRETS AND UV ############
-. "$DEV_ENV_DIR/.colors"
-. "$DEV_ENV_DIR/.secrets"
-. ~/rhdev/bin/activate
+############ SAFE SOURCE COMMAND ############
+# Safely source a file only if it exists
+safe_source() {
+    if [ -f "$1" ]; then
+        . "$1"
+    else
+        echo "Warning: File not found: $1"
+    fi
+}
+
+############ COLORS AND SECRETS AND UV ENV SETUP ############
+safe_source "$DEV_ENV_DIR/.colors"
+safe_source "$DEV_ENV_DIR/.secrets"
+safe_source ~/rhdev/bin/activate
 
 ############ COMMANDS ############
 res () {
@@ -232,7 +169,7 @@ gitclean() {
     fi
 }
 
-############ SETUP ############
+############ SETUP COMMANDS ############
 
 env_install() {
     cd
@@ -296,3 +233,102 @@ claude_setup() {
     npm uninstall -g @anthropic-ai/claude-code
     npm install -g @anthropic-ai/claude-code
 }
+
+
+############ ONE TIME SETUP ############
+
+# Track if any setup changes are made
+SETUP_CHANGED=0
+
+# Ensure network-share exists (create symlink if /mnt/data/$USER exists, otherwise create directory)
+if [ ! -e "$HOME/network-share" ]; then
+    if [ -d "/mnt/data/$USER" ]; then
+        ln -s /mnt/data/$USER "$HOME/network-share"
+        echo "Created symlink: $HOME/network-share -> /mnt/data/$USER"
+    else
+        mkdir -p "$HOME/network-share"
+        echo "Created directory: $HOME/network-share"
+    fi
+    SETUP_CHANGED=1
+fi
+
+# Move DEV_ENV_DIR to network-share if it's not already there
+DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
+NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
+
+if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
+    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
+    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
+
+    if [ ! -d "$NEW_LOCATION" ]; then
+        echo "Moving $DEV_ENV_DIR to $NEW_LOCATION..."
+        mv "$DEV_ENV_DIR" "$NEW_LOCATION"
+        export DEV_ENV_DIR="$NEW_LOCATION"
+        echo "DEV_ENV_DIR relocated to network share"
+        SETUP_CHANGED=1
+    else
+        export DEV_ENV_DIR="$NEW_LOCATION"
+        SETUP_CHANGED=1
+    fi
+fi
+
+# After relocation, ensure .bashrc sources the .bash_profile from new location
+if [ -f ~/.bashrc ]; then
+    # Check if there's already a line sourcing this file
+    if ! grep -qF "$DEV_ENV_DIR/.bash_profile" ~/.bashrc; then
+        echo "" >> ~/.bashrc
+        echo ". \"$DEV_ENV_DIR/.bash_profile\"" >> ~/.bashrc
+        echo "Added .bash_profile sourcing to ~/.bashrc"
+        SETUP_CHANGED=1
+    fi
+fi
+
+# Setup .gitconfig
+if [ -n "$DEV_ENV_DIR" ]; then
+    if ! grep -qF "template = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
+        echo "" >> ~/.gitconfig
+        echo "[commit]" >> ~/.gitconfig
+        echo "	template = $DEV_ENV_DIR/.git-template" >> ~/.gitconfig
+        echo "Git commit template configured: $DEV_ENV_DIR/.git-template"
+        SETUP_CHANGED=1
+    fi
+fi
+
+# setup HF HUB CACHE
+if [ -z "$HF_HUB_CACHE" ]; then
+    # Check if network share exists
+    if [ -d "$HOME/network-share" ]; then
+        HF_HUB_CACHE="$HOME/network-share/hf_hub"
+    else
+        HF_HUB_CACHE="$HOME/hf_hub"
+    fi
+
+    # Check if the hf_hub directory exists, create if it doesn't
+    if [ ! -d "$HF_HUB_CACHE" ]; then
+        echo "Creating HuggingFace cache directory: $HF_HUB_CACHE"
+        mkdir -p "$HF_HUB_CACHE"
+        SETUP_CHANGED=1
+    fi
+fi
+
+
+# Check if rhdev virtual environment exists, if not run env_setup
+if [ ! -d "$HOME/rhdev" ]; then
+    echo "rhdev virtual environment not found. Running env_setup..."
+    env_setup
+    SETUP_CHANGED=1
+fi
+
+# Check if claude-code is installed, if not run claude_setup
+if ! command -v claude &> /dev/null; then
+    echo "Claude Code not found. Running claude_setup..."
+    claude_setup
+    SETUP_CHANGED=1
+fi
+
+# Refresh bash profile if any setup changes were made
+if [ $SETUP_CHANGED -eq 1 ]; then
+    echo "Some setup changes were made, refreshing the bash profile"
+    source ~/.bashrc
+    return 2>/dev/null || exit
+fi
