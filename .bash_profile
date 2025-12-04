@@ -328,7 +328,8 @@ fi
 
 # Refresh bash profile if any setup changes were made
 if [ $SETUP_CHANGED -eq 1 ]; then
-    echo "Some setup changes were made, refreshing the bash profile"
+
+    echo "Some setup changes were made. Reloading bash aliases..."
     source ~/.bashrc
     return 2>/dev/null || exit
 fi
