@@ -20,9 +20,9 @@ export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 # Check if HF_HUB_CACHE is already set
 if [ -z "$HF_HUB_CACHE" ]; then
     # Check if network share exists
-    if [ -d "$HOME/network-share" ]; then
+    if [ -d "$HOME/network-share/hf_hub" ]; then
         HF_HUB_CACHE="$HOME/network-share/hf_hub"
-    else
+    elif [-d "$HOME/hf_hub"]; then
         HF_HUB_CACHE="$HOME/hf_hub"
     fi
 fi
@@ -222,7 +222,6 @@ env_setup() {
 claude_setup() {
     cd
     gcloud init
-    
     gcloud auth application-default login
     echo "add project ID itpc-gcp-ai-eng-claude"
     gcloud auth application-default set-quota-project cloudability-it-gemini
@@ -283,19 +282,46 @@ if [ -f ~/.bashrc ]; then
     fi
 fi
 
-# Setup .gitconfig
-if [ -n "$DEV_ENV_DIR" ]; then
-    if ! grep -qF "template = $DEV_ENV_DIR/.git-template" ~/.gitconfig 2>/dev/null; then
-        echo "" >> ~/.gitconfig
-        echo "[commit]" >> ~/.gitconfig
-        echo "	template = $DEV_ENV_DIR/.git-template" >> ~/.gitconfig
-        echo "Git commit template configured: $DEV_ENV_DIR/.git-template"
+# Helper function to set git config if missing
+set_git_config_if_missing() {
+    local config_key="$1"
+    local config_value="$2"
+    local description="$3"
+
+    if [ -z "$(git config --global "$config_key")" ]; then
+        git config --global "$config_key" "$config_value"
+        echo "$description"
         SETUP_CHANGED=1
     fi
+}
+
+# Helper function to set credential helper if missing
+set_git_credential_helper_if_missing() {
+    local credential_url="$1"
+    local helper_cmd="$2"
+    local description="$3"
+
+    if [ -z "$(git config --global --get-all credential."$credential_url".helper)" ]; then
+        git config --global credential."$credential_url".helper ""
+        git config --global --add credential."$credential_url".helper "$helper_cmd"
+        echo "$description"
+        SETUP_CHANGED=1
+    fi
+}
+
+# Setup git configuration
+if [ -n "$DEV_ENV_DIR" ]; then
+    set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
+    set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
+    set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
+    set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
+    set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
+    set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
+    set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
 fi
 
 # setup HF HUB CACHE
-if [ -z "$HF_HUB_CACHE" ]; then
+if [ -z "$HF_HUB_CACHE" ] || [ ! -d "$HF_HUB_CACHE" ]; then
     # Check if network share exists
     if [ -d "$HOME/network-share" ]; then
         HF_HUB_CACHE="$HOME/network-share/hf_hub"
@@ -324,6 +350,28 @@ if ! command -v claude &> /dev/null; then
     echo "Claude Code not found. Running claude_setup..."
     claude_setup
     SETUP_CHANGED=1
+fi
+
+# Check for required VSCode extensions
+if command -v code &> /dev/null; then
+    REQUIRED_EXTENSIONS=(
+        "anthropic.claude-code"
+        "eamodio.gitlens"
+        "letmaik.git-tree-compare"
+        "ms-python.debugpy"
+        "ms-python.python"
+        "ms-python.vscode-pylance"
+        "ms-python.vscode-python-envs"
+        "zhoukz.safetensors"
+    )
+
+    for ext in "${REQUIRED_EXTENSIONS[@]}"; do
+        if ! code --list-extensions | grep -q "^$ext$"; then
+            echo "Installing VSCode extension: $ext"
+            code --install-extension "$ext"
+            SETUP_CHANGED=1
+        fi
+    done
 fi
 
 # Refresh bash profile if any setup changes were made
