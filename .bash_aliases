@@ -1,4 +1,4 @@
-############ DIRS ############
+############ UPDATE DEV_ENV ############
 if [ -d "$HOME/devenv" ]; then
     export DEV_ENV_DIR="$HOME/devenv"
 elif [ -d "$HOME/network-share/devenv" ]; then
@@ -6,6 +6,18 @@ elif [ -d "$HOME/network-share/devenv" ]; then
 else
     echo "unable to find DEV_ENV_DIR"
 fi
+
+# Auto-update DEV_ENV_DIR from git
+if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
+    git_output=$(cd "$DEV_ENV_DIR" && git pull 2>/dev/null)
+    if [[ "$git_output" != "Already up to date." ]] && [[ -n "$git_output" ]]; then
+        echo "DEV_ENV updated from git. Reloading bash aliases..."
+        source ~/.bashrc
+        return 2>/dev/null || exit
+    fi
+fi
+
+############ DIRS ############
 
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
