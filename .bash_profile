@@ -54,9 +54,9 @@ fi
 
 # Auto-update DEV_ENV_DIR from git
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
+    echo "we in"
     git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
     git_exit_code=$?
-
     # Only reload if git pull succeeded (exit code 0) and made changes
     if [ $git_exit_code -eq 0 ] && [[ "$git_output" != "Already up to date." ]]; then
         echo "DEV_ENV updated from git. Reloading bash aliases..."
@@ -66,8 +66,6 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
         echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
     fi
 fi
-
-
 
 ############ DIRS ############
 
