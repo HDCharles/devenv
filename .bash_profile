@@ -166,6 +166,12 @@ gitclean() {
     fi
 }
 
+getdirs(){
+    echo "DEV_ENV_DIR= $DEV_ENV_DIR"
+    echo "HF_HUB_DIR= $HF_HUB_DIR"
+    echo "NETWORK_SHARE_DIR= $NETWORK_SHARE_DIR"
+}
+
 ############ SETUP COMMANDS ############
 
 env_install() {
@@ -221,13 +227,16 @@ fzf_setup() {
     ~/.fzf/install
 }
 
-claude_setup() {
+gcloud_setup() {
     cd
     gcloud init
     gcloud auth application-default login
     echo "add project ID itpc-gcp-ai-eng-claude"
     gcloud auth application-default set-quota-project cloudability-it-gemini
+}
 
+claude_install() {
+    cd
     mkdir ~/.npm-global
     npm config set prefix '~/.npm-global' 
 
@@ -357,6 +366,7 @@ if [ ! -e "$HOME/hf_hub" ]; then
     fi
     SETUP_CHANGED=1
 fi
+HF_HUB_DIR="$(readlink -f "$HOME/hf_hub")"
 
 
 ### OTS MOVE DEVENV TO NETWORK-SHARE ###
@@ -436,10 +446,14 @@ fi
 
 
 ### OTS CLAUDE CODE ###
+if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
+    echo "No gcloud setup detected. Running gcloud setup for Claude"
+    gcloud_setup
+fi
+
 if ! command -v claude &> /dev/null; then
     echo "Claude Code not found. Running claude_setup..."
-    claude_setup
-    SETUP_CHANGED=1
+    claude_install
 fi
 
 
