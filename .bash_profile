@@ -16,17 +16,7 @@ fi
 export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
-
-# Check if HF_HUB_CACHE is already set
-if [ -z "$HF_HUB_CACHE" ]; then
-    # Check if network share exists
-    if [ -d "$HOME/network-share/hf_hub" ]; then
-        HF_HUB_CACHE="$HOME/network-share/hf_hub"
-    elif [-d "$HOME/hf_hub"]; then
-        HF_HUB_CACHE="$HOME/hf_hub"
-    fi
-fi
-
+export HF_HUB_CACHE="$HOME/hf_hub"
 ############ VARS ############
 export CLAUDE_CODE_USE_VERTEX=1
 export CLOUD_ML_REGION=us-east5
@@ -92,6 +82,15 @@ hfwrite() {
 running() {
     ps aux | grep HDCharles 2>&1 | tee ~/running.log
     code ~/running.log
+}
+
+selfcache () {
+    if [ ! -d "$NETWORK_SHARE_DIR/hf_hub" ]; then
+        mkdir "$NETWORK_SHARE_DIR/hf_hub"
+    fi
+    if [ -L "$HOME/hf_hub" ]; then
+        ln -s "$NETWORK_SHARE_DIR/hf_hub" "$HOME/hf_hub"
+    fi
 }
 
 uva() {
@@ -233,70 +232,6 @@ claude_setup() {
     npm install -g @anthropic-ai/claude-code
 }
 
-
-############ ONE TIME SETUP ############
-
-# Track if any setup changes are made
-SETUP_CHANGED=0
-
-# Loop detection: prevent infinite reloads
-if [ -z "$BASH_PROFILE_RELOAD_COUNT" ]; then
-    export BASH_PROFILE_RELOAD_COUNT=0
-else
-    export BASH_PROFILE_RELOAD_COUNT=$((BASH_PROFILE_RELOAD_COUNT + 1))
-
-    if [ $BASH_PROFILE_RELOAD_COUNT -ge 3 ]; then
-        echo "ERROR: .bash_profile has reloaded $BASH_PROFILE_RELOAD_COUNT times."
-        echo "Please manually review and fix these issues, call `seebash` to see the .bash_profile"
-        unset BASH_PROFILE_RELOAD_COUNT
-        return 2>/dev/null || exit 1
-    fi
-fi
-
-# Ensure network-share exists (create symlink if /mnt/data/$USER exists, otherwise create directory)
-if [ ! -e "$HOME/network-share" ]; then
-    if [ -d "/mnt/data/$USER" ]; then
-        ln -s /mnt/data/$USER "$HOME/network-share"
-        echo "Created symlink: $HOME/network-share -> /mnt/data/$USER"
-    else
-        mkdir -p "$HOME/network-share"
-        echo "Created directory: $HOME/network-share"
-    fi
-    SETUP_CHANGED=1
-fi
-
-# Move DEV_ENV_DIR to network-share if it's not already there
-DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
-NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
-
-if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
-    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
-    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
-
-    if [ ! -d "$NEW_LOCATION" ]; then
-        echo "Moving $DEV_ENV_DIR to $NEW_LOCATION..."
-        mv "$DEV_ENV_DIR" "$NEW_LOCATION"
-        export DEV_ENV_DIR="$NEW_LOCATION"
-        echo "DEV_ENV_DIR relocated to network share"
-        SETUP_CHANGED=1
-    else
-        export DEV_ENV_DIR="$NEW_LOCATION"
-        SETUP_CHANGED=1
-    fi
-fi
-
-# After relocation, ensure .bashrc sources the .bash_profile from new location
-if [ -f ~/.bashrc ]; then
-    # Check if there's already a line sourcing this file
-    if ! grep -qF "$DEV_ENV_DIR/.bash_profile" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo ". \"$DEV_ENV_DIR/.bash_profile\"" >> ~/.bashrc
-        echo "Added .bash_profile sourcing to ~/.bashrc"
-        SETUP_CHANGED=1
-    fi
-fi
-
-# Helper function to set git config if missing
 set_git_config_if_missing() {
     local config_key="$1"
     local config_value="$2"
@@ -323,7 +258,27 @@ set_git_credential_helper_if_missing() {
     fi
 }
 
-# Setup git configuration
+
+############ ONE TIME SETUP ############
+
+# Loop detection: prevent infinite reloads
+if [ -z "$BASH_PROFILE_RELOAD_COUNT" ]; then
+    export BASH_PROFILE_RELOAD_COUNT=0
+else
+    export BASH_PROFILE_RELOAD_COUNT=$((BASH_PROFILE_RELOAD_COUNT + 1))
+
+    if [ $BASH_PROFILE_RELOAD_COUNT -ge 3 ]; then
+        echo "ERROR: .bash_profile has reloaded $BASH_PROFILE_RELOAD_COUNT times."
+        echo "Please manually review and fix these issues, call `seebash` to see the .bash_profile"
+        unset BASH_PROFILE_RELOAD_COUNT
+        return 2>/dev/null || exit 1
+    fi
+fi
+
+# Track if any setup changes are made
+SETUP_CHANGED=0
+
+### OTS GITCONFIG ###
 if [ -n "$DEV_ENV_DIR" ]; then
     set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
     set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
@@ -334,42 +289,110 @@ if [ -n "$DEV_ENV_DIR" ]; then
     set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
 fi
 
-# setup HF HUB CACHE
-if [ -z "$HF_HUB_CACHE" ] || [ ! -d "$HF_HUB_CACHE" ]; then
-    # Check if network share exists
-    if [ -d "$HOME/network-share" ]; then
-        HF_HUB_CACHE="$HOME/network-share/hf_hub"
-    else
-        HF_HUB_CACHE="$HOME/hf_hub"
-    fi
 
-    # Check if the hf_hub directory exists, create if it doesn't
-    if [ ! -d "$HF_HUB_CACHE" ]; then
-        echo "Creating HuggingFace cache directory: $HF_HUB_CACHE"
-        mkdir -p "$HF_HUB_CACHE"
+### OTS LAUNCH.JSON ###
+VSCODE_DIR="$HOME/.vscode"
+LAUNCH_JSON="$VSCODE_DIR/launch.json"
+TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
+if [ ! -e "$LAUNCH_JSON" ] && [ -d "$VSCODE_DIR" ]; then
+    ln -s "$TEMPLATE_LAUNCH" "$LAUNCH_JSON"
+    echo "Created symlink: $LAUNCH_JSON -> $TEMPLATE_LAUNCH"
+    SETUP_CHANGED=1
+fi
+
+
+### OTS NETWORK-SHARE ###
+if [ -d "/mnt/data" ]; then
+    NETWORK_SHARE_BASE="/mnt/data"
+elif [ -d "/raid" ]; then
+    NETWORK_SHARE_BASE="/raid/engine"
+else
+    NETWORK_SHARE_BASE="/home"
+fi
+NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
+if [ ! -e "$HOME/network-share" ]; then
+    # make HDCharles if it doesn't already exist
+    if [ ! -d "$NETWORK_SHARE_DIR" ]; then
+        if mkdir -p "$NETWORK_SHARE_DIR" 2>/dev/null; then
+            echo "Created directory: $NETWORK_SHARE_DIR"
+            SETUP_CHANGED=1
+        else
+            echo "Warning: Could not create $NETWORK_SHARE_DIR"
+        fi
+    fi
+    # Create symlink if not using $HOME
+    if [ "$NETWORK_SHARE_BASE" != "$HOME" ]; then
+        ln -snf "$NETWORK_SHARE_DIR" "$HOME/network-share"
+        echo "Created symlink: $HOME/network-share -> $NETWORK_SHARE_DIR"
         SETUP_CHANGED=1
     fi
 fi
 
 
-# Check if rhdev virtual environment exists, if not run env_setup
+### OTS HF_HUB ###
+if [ ! -e "$HOME/hf_hub" ]; then
+    if [ -d "$NETWORK_SHARE_BASE/hf_hub" ]; then
+        ln -s "$NETWORK_SHARE_BASE/hf_hub" "$HOME/hf_hub"
+        echo "Created symlink: $HOME/hf_hub -> $NETWORK_SHARE_BASE/hf_hub"
+    else
+        if [ ! -d "$NETWORK_SHARE_DIR/hf_hub" ]; then
+            mkdir "$NETWORK_SHARE_DIR/hf_hub"
+            echo "Made hf_hub dir: $NETWORK_SHARE_DIR/hf_hub"
+        fi
+        if [ "$HOME" != "$NETWORK_SHARE_DIR" ]; then
+            ln -s "$NETWORK_SHARE_DIR/hf_hub" "$HOME/hf_hub"
+            echo "Created symlink: $HOME/hf_hub -> $NETWORK_SHARE_DIR/hf_hub"
+        fi
+    fi
+    SETUP_CHANGED=1
+fi
+
+
+### OTS MOVE DEVENV TO NETWORK-SHARE ###
+DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
+NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
+
+if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
+    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
+    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
+
+    echo "Moving $DEV_ENV_DIR to $NEW_LOCATION"
+    mv "$DEV_ENV_DIR" "$NEW_LOCATION"
+    DEV_ENV_DIR="$NEW_LOCATION"
+    SETUP_CHANGED=1
+fi
+
+
+### OTS .BASHRC CALLS .BASH_PROFILE ###
+if [ -f ~/.bashrc ]; then
+    # Check if the correct source command already exists
+    if ! grep -qF "$DEV_ENV_DIR/.bash_profile" ~/.bashrc; then
+        # Not found, check for the marker comment
+        if grep -qF "# source devenv .bash_profile" ~/.bashrc; then
+            # Marker found, replace the line after it with the correct source command
+            sed -i "/# source devenv .bash_profile/{n;s|.*|. \"$DEV_ENV_DIR/.bash_profile\"|;}" ~/.bashrc
+            echo "Updated .bash_profile sourcing in ~/.bashrc"
+        else
+            # Marker not found, append both lines
+            echo "" >> ~/.bashrc
+            echo "# source devenv .bash_profile" >> ~/.bashrc
+            echo ". \"$DEV_ENV_DIR/.bash_profile\"" >> ~/.bashrc
+            echo "Added .bash_profile sourcing to ~/.bashrc"
+        fi
+        SETUP_CHANGED=1
+    fi
+fi
+
+
+### OTS RHDEV ###
 if [ ! -d "$HOME/rhdev" ]; then
     echo "rhdev virtual environment not found. Running env_setup..."
     env_setup
     SETUP_CHANGED=1
 fi
 
-# Check if claude-code is installed, if not run claude_setup
-if ! command -v claude &> /dev/null; then
-    echo "Claude Code not found. Running claude_setup..."
-    claude_setup
-    SETUP_CHANGED=1
-fi
-
-
-# Check for required VSCode extensions (run in background)
-if command -v code &> /dev/null; then
-    # (
+### OTS VSCODE EXTENTIONS ###
+if [ $SETUP_CHANGED -eq 0 ] && command -v code &> /dev/null; then
     REQUIRED_EXTENSIONS=(
         "anthropic.claude-code"
         "eamodio.gitlens"
@@ -380,7 +403,6 @@ if command -v code &> /dev/null; then
         "ms-python.vscode-python-envs"
         "zhoukz.safetensors"
     )
-
     # Get list of installed extensions once
     INSTALLED_EXTENSIONS=$(code --list-extensions)
 
@@ -388,36 +410,31 @@ if command -v code &> /dev/null; then
         if ! echo "$INSTALLED_EXTENSIONS" | grep -q "^$ext$"; then
             echo "Installing VSCode extension: $ext"
             output=$(code --install-extension "$ext" 2>&1)
-            echo "$output"
+            
 
             # Check if installation was successful by looking for success indicators in output
             if echo "$output" | grep -qi "successfully installed"; then
                 :
             else
+                echo "$output"
                 echo "Unable to install extension $ext, please install manually to avoid triggering this on each restart"
             fi
         fi
     done
-    # ) &
 fi
 
-# Setup launch.json for VSCode debugging via symlink
-if [ -d "$REPOS" ]; then
-    VSCODE_DIR="$REPOS/.vscode"
-    LAUNCH_JSON="$VSCODE_DIR/launch.json"
-    TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
 
-    if [ ! -e "$LAUNCH_JSON" ]; then
-        mkdir -p "$VSCODE_DIR"
-        ln -s "$TEMPLATE_LAUNCH" "$LAUNCH_JSON"
-        echo "Created symlink: $LAUNCH_JSON -> $TEMPLATE_LAUNCH"
-        SETUP_CHANGED=1
-    fi
+### OTS CLAUDE CODE ###
+if ! command -v claude &> /dev/null; then
+    echo "Claude Code not found. Running claude_setup..."
+    claude_setup
+    SETUP_CHANGED=1
 fi
+
 
 # Refresh bash profile if any setup changes were made
 if [ $SETUP_CHANGED -eq 1 ]; then
-    echo "Some setup changes were made. Reloading bash aliases..."
+    echo "Some setup changes were detected. Reloading bash aliases..."
     source ~/.bashrc
     return 2>/dev/null || exit
 else
