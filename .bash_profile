@@ -215,6 +215,11 @@ env_setup() {
     echo "call `env_install` to complete setup"
 }
 
+fzf_setup() {
+    cd ~/repos
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    ~/.fzf/install
+}
 
 claude_setup() {
     cd
