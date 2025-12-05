@@ -172,11 +172,13 @@ env_install() {
     cd
     . ~/rhdev/bin/activate
     cd repos
-    cd vllm
+    
 
     cd speculators
     uv pip install -e .[dev]
+    cd ..
 
+    cd vllm
     VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
     # uv pip install -e .
     cd ..
@@ -188,8 +190,6 @@ env_install() {
     cd compressed-tensors
     uv pip install -e .[dev]
     cd ..
-
-
 }
 
 
