@@ -170,6 +170,7 @@ getdirs(){
     echo "DEV_ENV_DIR= $DEV_ENV_DIR"
     echo "HF_HUB_DIR= $HF_HUB_DIR"
     echo "NETWORK_SHARE_DIR= $NETWORK_SHARE_DIR"
+    echo "SELF_HF_HUB= $SELF_HF_HUB"
 }
 
 ############ SETUP COMMANDS ############
@@ -325,44 +326,48 @@ elif [ -d "/raid" ]; then
     NETWORK_SHARE_BASE="/raid/engine"
 else
     NETWORK_SHARE_BASE="/home"
+    NO_NETWORK_SHARE=1
 fi
+
 NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
-if [ ! -e "$HOME/network-share" ]; then
-    # make HDCharles if it doesn't already exist
-    if [ ! -d "$NETWORK_SHARE_DIR" ]; then
-        echo "Creating directory: $NETWORK_SHARE_DIR"
-        mkdir "$NETWORK_SHARE_DIR"
-    fi
-    # Create symlink if not using $HOME
-    if [ "$NETWORK_SHARE_BASE" != "$HOME" ]; then
-        echo "Creating symlink: $HOME/network-share -> $NETWORK_SHARE_DIR"
-        ln -snf "$NETWORK_SHARE_DIR" "$HOME/network-share"
-    fi
+# make HDCharles if it doesn't already exist
+if [ ! -d "$NETWORK_SHARE_DIR" ]; then
+    echo "Creating directory: $NETWORK_SHARE_DIR"
+    mkdir "$NETWORK_SHARE_DIR"
     SETUP_CHANGED=1
 fi
 
+# Create symlink to network-share
+if [ ! -d "$HOME/network-share" ]; then
+    echo "Creating symlink: $HOME/network-share -> $NETWORK_SHARE_DIR"
+    ln -snf "$NETWORK_SHARE_DIR" "$HOME/network-share"
+    SETUP_CHANGED=1
+fi
 
 ### OTS HF_HUB ###
+
+# make a personal hf_hub
+SELF_HF_HUB="$NETWORK_SHARE_DIR/hf_hub"
+if [ ! -d "$SELF_HF_HUB" ]; then
+    echo "Making personal hf_hub dir: $SELF_HF_HUB"
+    mkdir "$SELF_HF_HUB"
+fi
+
+# try to symlink to main hf_hub/hf_hub_cache, 
+#if can't find it, symlink to personal hf_hub
 if [ ! -e "$HOME/hf_hub" ]; then
     if [ -d "$NETWORK_SHARE_BASE/hf_hub" ]; then
         echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_BASE/hf_hub"
         ln -snf "$NETWORK_SHARE_BASE/hf_hub" "$HOME/hf_hub"
-
     elif [ -d "$NETWORK_SHARE_BASE/hub_cache" ]; then
         echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_BASE/hub_cache"
-        ln -snf "$NETWORK_SHARE_BASE/hub_cache" "$HOME/hf_hub"
-        
+        ln -snf "$NETWORK_SHARE_BASE/hub_cache" "$HOME/hf_hub"  
+    elif [ -z "$NO_NETWORK_SHARE" ]; then
+        echo "Unable to find main hf_hub, going to use personal hf_hub"
+        echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_DIR/hf_hub"
+        ln -snf "$NETWORK_SHARE_DIR/hf_hub" "$HOME/hf_hub"
     else
-        if [ ! -d "$NETWORK_SHARE_DIR/hf_hub" ]; then
-            echo "Making hf_hub dir: $NETWORK_SHARE_DIR/hf_hub"
-            mkdir "$NETWORK_SHARE_DIR/hf_hub"
-            
-        fi
-        if [ "$HOME" != "$NETWORK_SHARE_DIR" ]; then
-            echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_DIR/hf_hub"
-            ln -snf "$NETWORK_SHARE_DIR/hf_hub" "$HOME/hf_hub"
-            
-        fi
+        echo "This message shouldn't show up, ran into issues setting up hf_hub symlink"
     fi
     SETUP_CHANGED=1
 fi
