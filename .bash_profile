@@ -205,9 +205,7 @@ env_setup() {
     uv venv --python 3.11 rhdev 
     . ~/rhdev/bin/activate
 
-    uv pip install black
     uv pip install isort
-    uv pip install ruff
     uv pip install pytest
     uv pip install debugpy
     uv pip install tblib
