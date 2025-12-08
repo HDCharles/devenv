@@ -181,9 +181,9 @@ env_install() {
     cd repos
     
 
-    cd speculators
-    uv pip install -e .[dev]
-    cd ..
+    # cd speculators
+    # uv pip install -e .[dev]
+    # cd ..
 
     cd vllm
     VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
