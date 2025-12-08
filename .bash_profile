@@ -184,17 +184,32 @@ setwindow() {
         return 1
     fi
 
-    if [ ! -f "$settings_file" ]; then
-        echo "Error: Settings file not found at $settings_file"
-        return 1
+    # Create settings directory if it doesn't exist
+    local settings_dir=$(dirname "$settings_file")
+    if [ ! -d "$settings_dir" ]; then
+        echo "Creating settings directory: $settings_dir"
+        mkdir -p "$settings_dir"
     fi
 
-    # Read current title, strip everything before first colon, and add new prefix
-    local current_title=$(grep '"window.title"' "$settings_file" | sed 's/.*"window.title": "\(.*\)".*/\1/')
-    local suffix=$(echo "$current_title" | sed 's/^[^:]*://')
-    local new_title="${new_prefix}:${suffix}"
+    # 1. Check if settings.json exists, create if not
+    if [ ! -f "$settings_file" ]; then
+        echo "Creating settings file: $settings_file"
+        echo '{}' > "$settings_file"
+    fi
 
-    # Update the settings file
+    # 2. Check if window.title is in settings.json
+    if ! grep -q '"window.title"' "$settings_file"; then
+        # Insert default window.title (escape $ to preserve VS Code template variables)
+        local default_title=':${remoteName})${activeEditorShort}${separator}${rootName}${separator}${profileName}'
+        jq --arg title "$default_title" '. + {"window.title": $title}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
+        echo "Added default window.title to settings"
+    fi
+
+    # 3. Modify the title - replace everything before the first ':' with the new prefix
+    local current_title=$(grep '"window.title"' "$settings_file" | sed 's/.*"window.title": "\(.*\)".*/\1/')
+    local suffix=$(echo "$current_title" | sed 's/^[^:]*//')
+    local new_title="${new_prefix}${suffix}"
+
     sed -i "s|\"window.title\": \".*\"|\"window.title\": \"$new_title\"|" "$settings_file"
 
     echo "Window title updated to: $new_title"
