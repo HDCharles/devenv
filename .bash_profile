@@ -173,6 +173,33 @@ getdirs(){
     echo "SELF_HF_HUB= $SELF_HF_HUB"
 }
 
+
+# Function to set VS Code window title prefix
+setwindow() {
+    local new_prefix="$1"
+    local settings_file="/home/HDCharles/.vscode-server/data/Machine/settings.json"
+
+    if [ -z "$new_prefix" ]; then
+        echo "Usage: setwindow <prefix>"
+        return 1
+    fi
+
+    if [ ! -f "$settings_file" ]; then
+        echo "Error: Settings file not found at $settings_file"
+        return 1
+    fi
+
+    # Read current title, strip everything before first colon, and add new prefix
+    local current_title=$(grep '"window.title"' "$settings_file" | sed 's/.*"window.title": "\(.*\)".*/\1/')
+    local suffix=$(echo "$current_title" | sed 's/^[^:]*://')
+    local new_title="${new_prefix}:${suffix}"
+
+    # Update the settings file
+    sed -i "s|\"window.title\": \".*\"|\"window.title\": \"$new_title\"|" "$settings_file"
+
+    echo "Window title updated to: $new_title"
+}
+
 ############ SETUP COMMANDS ############
 
 env_install() {
