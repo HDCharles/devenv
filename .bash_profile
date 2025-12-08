@@ -290,15 +290,13 @@ fi
 SETUP_CHANGED=0
 
 ### OTS GITCONFIG ###
-if [ -n "$DEV_ENV_DIR" ]; then
-    set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
-    set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
-    set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
-    set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
-    set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
-    set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
-    set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
-fi
+set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
+set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
+set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
+set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
+set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
+set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
+set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
 
 
 ### OTS LAUNCH.JSON ###
@@ -313,6 +311,7 @@ fi
 
 
 ### OTS NETWORK-SHARE ###
+export NO_NETWORK_SHARE=
 if [ -L "$HOME/network-share" ]; then
     NETWORK_SHARE_DIR="$(readlink -f "$HOME/network-share")"
     NETWORK_SHARE_BASE="$(dirname "$NETWORK_SHARE_DIR")"
@@ -320,11 +319,31 @@ elif [ -d "/dev-network-share/users/engine" ]; then
     NETWORK_SHARE_BASE="/dev-network-share/users/engine"
 elif [ -d "/mnt/data/engine" ]; then
     NETWORK_SHARE_BASE="/mnt/data/engine"
-elif [ -d "/raid" ]; then
+elif [ -d "/raid/engine" ]; then
     NETWORK_SHARE_BASE="/raid/engine"
+elif [ -d "/mnt/nfs-preprod-1/engine" ]; then
+    NETWORK_SHARE_BASE="/mnt/nfs-preprod-1/engine"
 else
-    NETWORK_SHARE_BASE="/home"
-    NO_NETWORK_SHARE=1
+    # Prompt for custom network share base if in an interactive shell
+    if [ -t 0 ]; then
+        echo "No network share base directory found in default locations."
+        read -p "Enter network share base directory (or press Enter to use /home): " CUSTOM_NETWORK_SHARE
+
+        if [ -n "$CUSTOM_NETWORK_SHARE" ] && [ -d "$CUSTOM_NETWORK_SHARE" ]; then
+            NETWORK_SHARE_BASE="$CUSTOM_NETWORK_SHARE"
+            echo "Using custom network share base: $NETWORK_SHARE_BASE"
+        elif [ -n "$CUSTOM_NETWORK_SHARE" ]; then
+            echo "Warning: Directory $CUSTOM_NETWORK_SHARE does not exist. Falling back to /home"
+            NETWORK_SHARE_BASE="/home"
+            NO_NETWORK_SHARE=1
+        else
+            NETWORK_SHARE_BASE="/home"
+            NO_NETWORK_SHARE=1
+        fi
+    else
+        NETWORK_SHARE_BASE="/home"
+        NO_NETWORK_SHARE=1
+    fi
 fi
 
 NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
