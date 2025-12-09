@@ -314,6 +314,22 @@ set_git_credential_helper_if_missing() {
     fi
 }
 
+# helper function that checks if $1 exists, and then if $1/$2 exists
+# and if so symlinks $1/$2 to $3
+check_and_symlink(){
+    local link_dir="$1"
+    local link_name="$2"
+    local target_file="$3"
+    
+    LINK_PATH="$link_dir/$link_name"
+    if [ -d "$link_dir" ]; then
+        if [ ! -e "$LINK_PATH" ]; then
+            echo "Creating symlink: $LINK_PATH -> $target_file"
+        fi
+        ln -snf "$target_file" "$LINK_PATH"
+    fi
+}
+
 
 ############ ONE TIME SETUP ############
 
@@ -345,19 +361,9 @@ set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git co
 
 
 ### OTS LAUNCH.JSON ###
-if [ -d "$HOME/.vscode" ]; then
-    VSCODE_DIR="$HOME/.vscode"
-elif [ -d "$HOME/.vscode-server" ]; then
-    VSCODE_DIR="$HOME/.vscode-server"
-fi
-LAUNCH_JSON="$VSCODE_DIR/launch.json"
 TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
-if [ ! -e "$LAUNCH_JSON" ] && [ ! -z "$VSCODE_DIR" ]; then
-    ln -s "$TEMPLATE_LAUNCH" "$LAUNCH_JSON"
-    echo "Created symlink: $LAUNCH_JSON -> $TEMPLATE_LAUNCH"
-    SETUP_CHANGED=1
-fi
-
+check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
+check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
 
 ### OTS NETWORK-SHARE ###
 export NO_NETWORK_SHARE=
