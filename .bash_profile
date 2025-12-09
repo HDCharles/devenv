@@ -45,7 +45,6 @@ safe_source() {
 safe_source "$DEV_ENV_DIR/.colors"
 safe_source "$DEV_ENV_DIR/.secrets"
 safe_source ~/rhdev/bin/activate
-
 ############ COMMANDS ############
 res () {
     output=$(canhazgpu reserve --gpus "$1" --duration "$2")
@@ -350,20 +349,6 @@ fi
 # Track if any setup changes are made
 SETUP_CHANGED=0
 
-### OTS GITCONFIG ###
-set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
-set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
-set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
-set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
-set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
-set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
-set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
-
-
-### OTS LAUNCH.JSON ###
-TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
-check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
-check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
 
 ### OTS NETWORK-SHARE ###
 export NO_NETWORK_SHARE=
@@ -447,10 +432,10 @@ HF_HUB_DIR="$(readlink -f "$HOME/hf_hub")"
 
 
 ### OTS MOVE DEVENV TO NETWORK-SHARE ###
-DEV_ENV_PARENT="$(dirname "$DEV_ENV_DIR")"
+PARENT_DEV_ENV_DIR="$(dirname "$DEV_ENV_DIR")"
 NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
 
-if [ "$DEV_ENV_PARENT" != "$HOME/network-share" ] && [ "$DEV_ENV_PARENT" != "$NETWORK_SHARE_REALPATH" ]; then
+if [ "$PARENT_DEV_ENV_DIR" != "$HOME/network-share" ] && [ "$PARENT_DEV_ENV_DIR" != "$NETWORK_SHARE_REALPATH" ]; then
     DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
     NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
 
@@ -480,6 +465,21 @@ if [ -f ~/.bashrc ]; then
         SETUP_CHANGED=1
     fi
 fi
+
+### OTS GITCONFIG ###
+set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
+set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
+set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
+set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
+set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
+set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
+set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
+
+
+### OTS LAUNCH.JSON ###
+TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
+check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
+check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
 
 
 ### OTS RHDEV ###
