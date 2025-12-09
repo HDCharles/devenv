@@ -261,7 +261,7 @@ env_setup() {
     git clone https://github.com/vllm-project/vllm
     git clone https://github.com/vllm-project/speculators
 
-    echo "call `env_install` to complete setup"
+    echo "call \`env_install\` to complete setup"
 }
 
 fzf_setup() {
