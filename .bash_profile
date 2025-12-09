@@ -17,6 +17,9 @@ export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 export HF_HUB_CACHE="$HOME/hf_hub"
+export HF_HOME="$HOME/hf_hub"
+export TRANSFORMERS_CACHE="$HOME/hf_hub"
+export HF_DATASETS_CACHE="$HOME/hf_hub"
 ############ VARS ############
 export CLAUDE_CODE_USE_VERTEX=1
 export CLOUD_ML_REGION=us-east5
