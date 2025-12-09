@@ -342,10 +342,14 @@ set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git co
 
 
 ### OTS LAUNCH.JSON ###
-VSCODE_DIR="$HOME/.vscode"
+if [ -d "$HOME/.vscode" ]; then
+    VSCODE_DIR="$HOME/.vscode"
+elif [ -d "$HOME/.vscode-server" ]; then
+    VSCODE_DIR="$HOME/.vscode-server"
+fi
 LAUNCH_JSON="$VSCODE_DIR/launch.json"
 TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
-if [ ! -e "$LAUNCH_JSON" ] && [ -d "$VSCODE_DIR" ]; then
+if [ ! -e "$LAUNCH_JSON" ] && [ ! -z "$VSCODE_DIR" ]; then
     ln -s "$TEMPLATE_LAUNCH" "$LAUNCH_JSON"
     echo "Created symlink: $LAUNCH_JSON -> $TEMPLATE_LAUNCH"
     SETUP_CHANGED=1
