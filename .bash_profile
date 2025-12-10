@@ -280,7 +280,7 @@ gcloud_setup() {
     gcloud auth application-default set-quota-project cloudability-it-gemini
 }
 
-claude_install() {
+claude_setup() {
     cd
     mkdir ~/.npm-global
     npm config set prefix '~/.npm-global' 
@@ -532,7 +532,7 @@ fi
 
 if ! command -v claude &> /dev/null; then
     echo "Claude Code not found. Running claude_setup..."
-    claude_install
+    claude_setup
 fi
 
 
