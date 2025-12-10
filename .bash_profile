@@ -16,6 +16,7 @@ fi
 export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
+
 export HF_HUB_CACHE="$HOME/hf_hub"
 export HF_HOME="$HOME/hf_hub"
 export TRANSFORMERS_CACHE="$HOME/hf_hub"
@@ -31,6 +32,7 @@ export VISUAL=vim
 alias debug='python -Xfrozen_modules=off -m debugpy --listen 5678 --wait-for-client'
 alias ref='source ~/.bashrc'
 alias seebash="code $DEV_ENV_DIR/.bash_profile"
+alias godev="cd $DEV_ENV_DIR"
 ############ SAFE SOURCE COMMAND ############
 # Safely source a file only if it exists
 safe_source() {
