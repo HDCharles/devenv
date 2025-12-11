@@ -321,7 +321,10 @@ check_and_symlink(){
     local link_dir="$1"
     local link_name="$2"
     local target_file="$3"
-    
+    if [ ! -e "$link_dir" ]; then
+        mkdir -p "$link_dir"
+    fi
+
     LINK_PATH="$link_dir/$link_name"
     if [ -d "$link_dir" ]; then
         if [ ! -e "$LINK_PATH" ]; then
