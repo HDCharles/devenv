@@ -1,4 +1,4 @@
-1) run:
+1) in a new server do:
 
 ```shell
 git clone https://github.com/HDCharles/devenv
