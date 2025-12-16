@@ -221,6 +221,35 @@ setwindow() {
 
 ############ SETUP COMMANDS ############
 
+refresh_a_repo(){
+    local repo="$1"
+    cd
+    cd repos
+    cd "$repo"
+    checkout_output=$(git checkout main 2>&1)
+    git_exit_code=$?
+    if [ $git_exit_code -ne 0 ]; then
+        echo "unable to checkout main for repo: $repo, got $checkout_output"
+        echo "please resolve manually"
+        return
+    fi
+    pull_output=$(git pull 2>&1)
+    git_exit_code=$?
+    if [ $git_exit_code -ne 0 ]; then
+        echo "unable to git pull main for repo $repo, got $pull_output"
+        echo "please resolve manually"
+        return
+    fi
+    echo "updated repo: $repo"
+}
+
+repo_refresh(){
+    refresh_a_repo "llm-compressor"
+    refresh_a_repo "vllm"
+    refresh_a_repo "compressed-tensors"
+    echo "repos updated, to install use \`env_install\`"
+}
+
 env_install() {
     cd
     . ~/rhdev/bin/activate
