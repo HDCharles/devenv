@@ -12,12 +12,8 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
         echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
     fi
 fi
-############ SAFE SOURCE COMMAND ############
-# Safely source a file only if it exists
-safe_source() {
-    if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi
-}
-############ COLORS AND SECRETS AND UV ENV SETUP ############
+############ COLORS AND SECRETS AND UV ENV SETUP ###########
+safe_source() {if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi}
 safe_source "$DEV_ENV_DIR/.colors"
 safe_source "$DEV_ENV_DIR/.secrets"
 safe_source ~/rhdev/bin/activate
