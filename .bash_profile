@@ -1,4 +1,5 @@
 ############ AUTO UPDATE DEVENV ############
+export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
     git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
     git_exit_code=$?
@@ -13,7 +14,6 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
 fi
 
 ############ DIRS ############
-export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
 
@@ -179,6 +179,24 @@ getdirs(){
     echo "HF_HUB_DIR= $HF_HUB_DIR"
     echo "NETWORK_SHARE_DIR= $NETWORK_SHARE_DIR"
     echo "SELF_HF_HUB= $SELF_HF_HUB"
+}
+
+gdt() {
+    if [ -z "$1" ]; then
+        echo "Usage: diffmain <file_path>"
+        return 1
+    fi
+
+    local file="$1"
+
+    # Check if file exists in current state or in main
+    if [ ! -f "$file" ] && ! git ls-tree -r main --name-only | grep -q "^$file$"; then
+        echo "Error: File '$file' not found in current state or main branch"
+        return 1
+    fi
+
+    # Use git difftool to compare main branch version with current
+    git difftool main -- "$file"
 }
 
 
@@ -511,7 +529,7 @@ set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git us
 set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
 set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
 set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
-set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
+set_git_config_if_missing "difftool.vscode.cmd" "code wait --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
 set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
 set_git_config_if_missing "safe.directory" "$DEV_ENV_DIR" "set devenv as a safe directory"
 
