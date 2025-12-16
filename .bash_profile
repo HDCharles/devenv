@@ -247,6 +247,7 @@ repo_refresh(){
     refresh_a_repo "llm-compressor"
     refresh_a_repo "vllm"
     refresh_a_repo "compressed-tensors"
+    refresh_a_repo "speculators"
     echo "repos updated, to install use \`env_install\`"
 }
 
