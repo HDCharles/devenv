@@ -509,7 +509,7 @@ set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh aut
 set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
 set_git_config_if_missing "difftool.vscode.cmd" "code --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
 set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
-
+set_git_config_if_missing "safe.directory" "$DEV_ENV_DIR" "set devenv as a safe directory"
 
 ### OTS LAUNCH.JSON ###
 TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
