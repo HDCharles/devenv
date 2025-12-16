@@ -15,11 +15,7 @@ fi
 ############ SAFE SOURCE COMMAND ############
 # Safely source a file only if it exists
 safe_source() {
-    if [ -f "$1" ]; then
-        . "$1"
-    else
-        echo "Warning: File not found: $1"
-    fi
+    if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi
 }
 ############ COLORS AND SECRETS AND UV ENV SETUP ############
 safe_source "$DEV_ENV_DIR/.colors"
