@@ -49,6 +49,10 @@ safe_source "$DEV_ENV_DIR/.secrets"
 safe_source ~/rhdev/bin/activate
 ############ COMMANDS ############
 res () {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+      echo "Error: res requires 2 args: `res <# gpus> <duration>`"
+      exit 1
+    fi
     output=$(canhazgpu reserve --gpus "$1" --duration "$2")
     export_cmd=$(echo "$output" | grep "export CUDA_VISIBLE_DEVICES" | tail -1)
     if [ -n "$export_cmd" ]; then
