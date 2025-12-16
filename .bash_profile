@@ -1,5 +1,3 @@
-export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 ############ AUTO UPDATE DEVENV ############
 export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
@@ -14,7 +12,19 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
         echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
     fi
 fi
-
+############ SAFE SOURCE COMMAND ############
+# Safely source a file only if it exists
+safe_source() {
+    if [ -f "$1" ]; then
+        . "$1"
+    else
+        echo "Warning: File not found: $1"
+    fi
+}
+############ COLORS AND SECRETS AND UV ENV SETUP ############
+safe_source "$DEV_ENV_DIR/.colors"
+safe_source "$DEV_ENV_DIR/.secrets"
+safe_source ~/rhdev/bin/activate
 ############ DIRS ############
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
@@ -35,20 +45,6 @@ alias debug='python -Xfrozen_modules=off -m debugpy --listen 5678 --wait-for-cli
 alias ref='source ~/.bashrc'
 alias seebash="code $DEV_ENV_DIR/.bash_profile"
 alias godev="cd $DEV_ENV_DIR"
-############ SAFE SOURCE COMMAND ############
-# Safely source a file only if it exists
-safe_source() {
-    if [ -f "$1" ]; then
-        . "$1"
-    else
-        echo "Warning: File not found: $1"
-    fi
-}
-
-############ COLORS AND SECRETS AND UV ENV SETUP ############
-safe_source "$DEV_ENV_DIR/.colors"
-safe_source "$DEV_ENV_DIR/.secrets"
-safe_source ~/rhdev/bin/activate
 ############ COMMANDS ############
 res () {
     if [ -z "$1" ] || [ -z "$2" ]; then
@@ -272,6 +268,7 @@ repo_refresh(){
     refresh_repo "vllm"
     refresh_repo "compressed-tensors"
     refresh_repo "speculators"
+    cd
     echo "repos updated, to install use \`env_install\`"
 }
 
