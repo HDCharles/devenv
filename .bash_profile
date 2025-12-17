@@ -264,7 +264,7 @@ repo_refresh(){
     echo "repos updated, to install use \`env_install\`"
 }
 
-env_install() {
+env_install_source() {
     cd
     . ~/rhdev/bin/activate
     cd repos
@@ -275,8 +275,7 @@ env_install() {
     # cd ..
 
     cd vllm
-    VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
-    # uv pip install -e .
+    uv pip install -e .[dev]
     cd ..
 
     cd llm-compressor
@@ -288,6 +287,31 @@ env_install() {
     cd ..
 }
 
+env_install_main() {
+    cd
+    . ~/rhdev/bin/activate
+    cd repos
+    
+    # cd speculators
+    # uv pip install -e .[dev]
+    # cd ..
+
+    cd llm-compressor
+    uv pip install -e .[dev]
+    cd ..
+
+    cd compressed-tensors
+    uv pip install -e .[dev]
+    cd ..
+
+    cd vllm
+    VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
+    cd ..
+
+
+}
+
+env_instal(){env_install_main}
 
 env_setup() {
     cd
