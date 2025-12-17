@@ -13,7 +13,8 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
     fi
 fi
 ############ COLORS AND SECRETS AND UV ENV SETUP ###########
-safe_source() {if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi}
+type deactivate &>/dev/null && deactivate # need to deactivate or else colors wont work
+safe_source() { if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi }
 safe_source "$DEV_ENV_DIR/.colors"
 safe_source "$DEV_ENV_DIR/.secrets"
 safe_source ~/rhdev/bin/activate
@@ -311,7 +312,7 @@ env_install_main() {
 
 }
 
-env_instal(){env_install_main}
+env_instal(){ env_install_main; }
 
 env_setup() {
     cd
