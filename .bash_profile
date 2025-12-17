@@ -12,12 +12,15 @@ if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
         echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
     fi
 fi
-############ COLORS AND SECRETS AND UV ENV SETUP ###########
+############ EXTERNAL SETUPS ###########
 type deactivate &>/dev/null && deactivate # need to deactivate or else colors wont work
 safe_source() { if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi }
-safe_source "$DEV_ENV_DIR/.colors"
-safe_source "$DEV_ENV_DIR/.secrets"
-safe_source ~/rhdev/bin/activate
+safe_source "$DEV_ENV_DIR/.colors" # colorful terminal
+safe_source "$DEV_ENV_DIR/.secrets" # setup secrets
+safe_source ~/rhdev/bin/activate # uv venv activate
+if [ -f ~/.fzf.bash ]; then # some devservers have fzf in usr/bin which takes precedence over this one
+    export PATH="/home/HDCharles/.fzf/bin:${PATH}"
+fi
 ############ DIRS ############
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
@@ -335,7 +338,6 @@ env_setup() {
 }
 
 fzf_setup() {
-    cd ~/repos
     git clone https://github.com/junegunn/fzf.git ~/.fzf
     ~/.fzf/install
 }
@@ -594,6 +596,10 @@ if [ $SETUP_CHANGED -eq 0 ] && command -v code &> /dev/null; then
     done
 fi
 
+### OTS fzf
+if [ ! -e "$HOME/.fzf" ]; then
+    fzf_setup
+fi
 
 ### OTS CLAUDE CODE ###
 if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
@@ -605,6 +611,7 @@ if ! command -v claude &> /dev/null; then
     echo "Claude Code not found. Running claude_setup..."
     claude_setup
 fi
+
 
 
 # Refresh bash profile if any setup changes were made
