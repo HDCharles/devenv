@@ -42,6 +42,7 @@ alias ref='source ~/.bashrc'
 alias seebash="code $DEV_ENV_DIR/.bash_profile"
 alias godev="cd $DEV_ENV_DIR"
 alias outto="2>&1 | tee"
+alias setwin="setwindow"
 ############ COMMANDS ############
 res () {
     if [ -z "$1" ] || [ -z "$2" ]; then
@@ -193,7 +194,6 @@ gdt() {
     # Use git difftool to compare main branch version with current
     git difftool main -- "$file"
 }
-
 
 # Function to set VS Code window title prefix
 setwindow() {
