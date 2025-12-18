@@ -1,6 +1,7 @@
 ############ AUTO UPDATE DEVENV ############
 export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
+# Only run auto-update in interactive shells
+if [[ $- == *i* ]] && [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
     git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
     git_exit_code=$?
     # Only reload if git pull succeeded (exit code 0) and made changes
@@ -407,6 +408,11 @@ check_and_symlink(){
 
 
 ############ ONE TIME SETUP ############
+# Only run one-time setup in interactive shells
+if [[ $- != *i* ]]; then
+    # Non-interactive shell - skip all setup
+    return 2>/dev/null || exit
+fi
 
 # Loop detection: prevent infinite reloads
 if [ -z "$BASH_PROFILE_RELOAD_COUNT" ]; then
@@ -426,7 +432,7 @@ fi
 SETUP_CHANGED=0
 
 
-### OTS NETWORK-SHARE ###
+### OTS NETWORK-SHARE DIR ###
 export NO_NETWORK_SHARE=
 if [ -L "$HOME/network-share" ]; then
     NETWORK_SHARE_DIR="$(readlink -f "$HOME/network-share")"
@@ -507,7 +513,7 @@ fi
 HF_HUB_DIR="$(readlink -f "$HOME/hf_hub")"
 
 
-### OTS MOVE DEVENV TO NETWORK-SHARE ###
+### OTS MOVE DEVENV TO NETWORK-SHARE IF NOT ALREADY THERE###
 PARENT_DEV_ENV_DIR="$(dirname "$DEV_ENV_DIR")"
 NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
 
