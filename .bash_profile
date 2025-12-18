@@ -41,6 +41,7 @@ alias debug='python -Xfrozen_modules=off -m debugpy --listen 5678 --wait-for-cli
 alias ref='source ~/.bashrc'
 alias seebash="code $DEV_ENV_DIR/.bash_profile"
 alias godev="cd $DEV_ENV_DIR"
+alias outto="2>&1 | tee"
 ############ COMMANDS ############
 res () {
     if [ -z "$1" ] || [ -z "$2" ]; then
