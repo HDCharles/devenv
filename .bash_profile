@@ -46,8 +46,8 @@ alias setwin="setwindow"
 ############ COMMANDS ############
 res () {
     if [ -z "$1" ] || [ -z "$2" ]; then
-      echo "Error: res requires 2 args: `res <# gpus> <duration>`"
-      exit 1
+      echo "Error: res requires 2 args: res <# gpus> <duration>"
+      return
     fi
     output=$(canhazgpu reserve --gpus "$1" --duration "$2")
     export_cmd=$(echo "$output" | grep "export CUDA_VISIBLE_DEVICES" | tail -1)
@@ -56,7 +56,7 @@ res () {
         echo "Successfully ran: $export_cmd"
     else
         echo "Warning: Could not find export command in output"
-        exit 1
+        return
     fi
 }
 
