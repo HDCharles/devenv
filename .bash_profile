@@ -559,9 +559,11 @@ set_git_config_if_missing "safe.directory" "$DEV_ENV_DIR" "set devenv as a safe 
 
 ### OTS LAUNCH.JSON ###
 TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
-check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
-check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH" 
+check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
+check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 
+### OTS TMUX CONFIG ###
+check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
 ### OTS RHDEV ###
 if [ ! -d "$HOME/rhdev" ]; then
