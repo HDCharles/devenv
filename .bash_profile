@@ -236,6 +236,23 @@ setwindow() {
     echo "Window title updated to: $new_title"
 }
 
+tmuxhelp() {
+    echo "tmux: new session"
+    echo "tmux new -s <name> : new session with name"
+    echo "tmux attach: attach to most recent"
+    echo "tma: interactive choose-session"
+    echo "exit: kill session from inside"
+    echo "tmux kill-session/tmux kill-session -t <name>: killing sessions from outside"
+}
+
+tma() {                                                                 
+    local session                                                       
+    session=$(tmux ls -F "#{session_name}" 2>/dev/null | fzf --prompt="Select tmux session: ")
+    if [ -n "$session" ]; then                                          
+        tmux attach -t "$session"                                       
+    fi                                                                  
+} 
+
 ############ SETUP COMMANDS ############
 
 refresh_repo(){
