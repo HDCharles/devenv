@@ -296,9 +296,9 @@ env_install_source() {
     # uv pip install -e .[dev]
     # cd ..
 
-    cd vllm
-    uv pip install -e .[dev]
-    cd ..
+    # cd vllm
+    # uv pip install -e .[dev]
+    # cd ..
 
     cd llm-compressor
     uv pip install -e .[dev]
@@ -333,7 +333,7 @@ env_install_main() {
 
 }
 
-env_instal(){ env_install_main; }
+env_install(){ env_install_main; }
 
 env_setup() {
     cd
