@@ -1,0 +1,392 @@
+############ SETUP COMMANDS ############
+
+refresh_repo_impl(){
+    local repo="$1"
+    cd
+    cd repos
+    cd "$repo"
+    checkout_output=$(git checkout main 2>&1)
+    git_exit_code=$?
+    if [ $git_exit_code -ne 0 ]; then
+        echo "unable to checkout main for repo: $repo, got $checkout_output"
+        echo "please resolve manually"
+        return
+    fi
+    pull_output=$(git pull 2>&1)
+    git_exit_code=$?
+    if [ $git_exit_code -ne 0 ]; then
+        echo "unable to git pull main for repo $repo, got $pull_output"
+        echo "please resolve manually"
+        return
+    fi
+    echo "updated repo: $repo"
+}
+
+repo_refresh(){
+    refresh_repo_impl "llm-compressor"
+    refresh_repo_impl "vllm"
+    refresh_repo_impl "compressed-tensors"
+    refresh_repo_impl "speculators"
+    cd
+    echo "repos updated, to install use \`env_install\`"
+}
+
+env_install_source() {
+    cd
+    . ~/rhdev/bin/activate
+    cd repos
+    
+
+    # cd speculators
+    # uv pip install -e .[dev]
+    # cd ..
+
+    # cd vllm
+    # uv pip install -e .[dev]
+    # cd ..
+
+    cd llm-compressor
+    uv pip install -e .[dev]
+    cd ..
+
+    cd compressed-tensors
+    uv pip install -e .[dev]
+    cd ..
+}
+
+env_install_main() {
+    cd
+    . ~/rhdev/bin/activate
+    cd repos
+    
+    # cd speculators
+    # uv pip install -e .[dev]
+    # cd ..
+
+    cd llm-compressor
+    uv pip install -e .[dev]
+    cd ..
+
+    cd compressed-tensors
+    uv pip install -e .[dev]
+    cd ..
+
+    cd vllm
+    VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
+    cd ..
+
+
+}
+
+env_install(){ env_install_main; }
+
+env_setup() {
+    cd
+    uv venv --python 3.11 rhdev 
+    . ~/rhdev/bin/activate
+
+    uv pip install isort
+    uv pip install pytest
+    uv pip install debugpy
+    uv pip install tblib
+
+    mkdir repos
+    cd repos
+    git clone https://github.com/vllm-project/llm-compressor
+    git clone https://github.com/neuralmagic/compressed-tensors
+    git clone https://github.com/vllm-project/vllm
+    git clone https://github.com/vllm-project/speculators
+
+    echo "call \`env_install\` to complete setup"
+}
+
+fzf_setup() {
+    git clone https://github.com/junegunn/fzf.git ~/.fzf
+    ~/.fzf/install
+}
+
+gcloud_setup() {
+    cd
+    gcloud init
+    gcloud auth application-default login
+    echo "add project ID itpc-gcp-ai-eng-claude"
+    gcloud auth application-default set-quota-project cloudability-it-gemini
+}
+
+claude_setup() {
+    cd
+    mkdir ~/.npm-global
+    npm config set prefix '~/.npm-global' 
+
+    npm uninstall -g @anthropic-ai/claude-code
+    npm install -g @anthropic-ai/claude-code
+}
+
+set_git_config_if_missing() {
+    local config_key="$1"
+    local config_value="$2"
+    local description="$3"
+
+    if [ -z "$(git config --global "$config_key")" ]; then
+        git config --global "$config_key" "$config_value"
+        echo "$description"
+        SETUP_CHANGED=1
+    fi
+}
+
+# Helper function to set credential helper if missing
+set_git_credential_helper_if_missing() {
+    local credential_url="$1"
+    local helper_cmd="$2"
+    local description="$3"
+
+    if [ -z "$(git config --global --get-all credential."$credential_url".helper)" ]; then
+        git config --global credential."$credential_url".helper ""
+        git config --global --add credential."$credential_url".helper "$helper_cmd"
+        echo "$description"
+        SETUP_CHANGED=1
+    fi
+}
+
+# helper function that checks if $1 exists, and then if $1/$2 exists
+# and if so symlinks $1/$2 to $3
+check_and_symlink(){
+    local link_dir="$1"
+    local link_name="$2"
+    local target_file="$3"
+    if [ ! -e "$link_dir" ]; then
+        mkdir -p "$link_dir"
+    fi
+
+    LINK_PATH="$link_dir/$link_name"
+    if [ -d "$link_dir" ]; then
+        if [ ! -e "$LINK_PATH" ]; then
+            echo "Creating symlink: $LINK_PATH -> $target_file"
+        fi
+        ln -snf "$target_file" "$LINK_PATH"
+    fi
+}
+
+############ ONE TIME SETUP ############
+# Only run one-time setup in interactive shells
+if [[ $- != *i* ]]; then
+    # Non-interactive shell - skip all setup
+    return 2>/dev/null || exit
+fi
+
+# Loop detection: prevent infinite reloads
+if [ -z "$BASH_PROFILE_RELOAD_COUNT" ]; then
+    export BASH_PROFILE_RELOAD_COUNT=0
+else
+    export BASH_PROFILE_RELOAD_COUNT=$((BASH_PROFILE_RELOAD_COUNT + 1))
+
+    if [ $BASH_PROFILE_RELOAD_COUNT -ge 3 ]; then
+        echo "ERROR: .bash_profile has reloaded $BASH_PROFILE_RELOAD_COUNT times."
+        echo "Please manually review and fix these issues, call `seebash` to see the .bash_profile"
+        unset BASH_PROFILE_RELOAD_COUNT
+        return 2>/dev/null || exit 1
+    fi
+fi
+
+# Track if any setup changes are made
+SETUP_CHANGED=0
+
+
+### OTS NETWORK-SHARE DIR ###
+export NO_NETWORK_SHARE=
+if [ -L "$HOME/network-share" ]; then
+    NETWORK_SHARE_DIR="$(readlink -f "$HOME/network-share")"
+    NETWORK_SHARE_BASE="$(dirname "$NETWORK_SHARE_DIR")"
+elif [ -d "/dev-network-share/users/engine" ]; then
+    NETWORK_SHARE_BASE="/dev-network-share/users/engine"
+elif [ -d "/mnt/data/engine" ]; then
+    NETWORK_SHARE_BASE="/mnt/data/engine"
+elif [ -d "/raid/engine" ]; then
+    NETWORK_SHARE_BASE="/raid/engine"
+elif [ -d "/mnt/nfs-preprod-1/engine" ]; then
+    NETWORK_SHARE_BASE="/mnt/nfs-preprod-1/engine"
+else
+    # Prompt for custom network share base if in an interactive shell
+    if [ -t 0 ]; then
+        echo "No network share base directory found in default locations."
+        read -p "Enter network share base directory (or press Enter to use /home): " CUSTOM_NETWORK_SHARE
+
+        if [ -n "$CUSTOM_NETWORK_SHARE" ] && [ -d "$CUSTOM_NETWORK_SHARE" ]; then
+            NETWORK_SHARE_BASE="$CUSTOM_NETWORK_SHARE"
+            echo "Using custom network share base: $NETWORK_SHARE_BASE"
+        elif [ -n "$CUSTOM_NETWORK_SHARE" ]; then
+            echo "Warning: Directory $CUSTOM_NETWORK_SHARE does not exist. Falling back to /home"
+            NETWORK_SHARE_BASE="/home"
+            NO_NETWORK_SHARE=1
+        else
+            NETWORK_SHARE_BASE="/home"
+            NO_NETWORK_SHARE=1
+        fi
+    else
+        NETWORK_SHARE_BASE="/home"
+        NO_NETWORK_SHARE=1
+    fi
+fi
+
+NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
+# make HDCharles if it doesn't already exist
+if [ ! -d "$NETWORK_SHARE_DIR" ]; then
+    echo "Creating directory: $NETWORK_SHARE_DIR"
+    mkdir "$NETWORK_SHARE_DIR"
+    SETUP_CHANGED=1
+fi
+
+# Create symlink to network-share
+if [ ! -d "$HOME/network-share" ]; then
+    echo "Creating symlink: $HOME/network-share -> $NETWORK_SHARE_DIR"
+    ln -snf "$NETWORK_SHARE_DIR" "$HOME/network-share"
+    SETUP_CHANGED=1
+fi
+
+### OTS HF_HUB ###
+
+# make a personal hf_hub
+SELF_HF_HUB="$NETWORK_SHARE_DIR/hf_hub"
+if [ ! -d "$SELF_HF_HUB" ]; then
+    echo "Making personal hf_hub dir: $SELF_HF_HUB"
+    mkdir "$SELF_HF_HUB"
+fi
+
+# try to symlink to main hf_hub/hf_hub_cache, 
+#if can't find it, symlink to personal hf_hub
+if [ ! -e "$HOME/hf_hub" ]; then
+    if [ -d "$NETWORK_SHARE_BASE/hf_hub" ]; then
+        echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_BASE/hf_hub"
+        ln -snf "$NETWORK_SHARE_BASE/hf_hub" "$HOME/hf_hub"
+    elif [ -d "$NETWORK_SHARE_BASE/hub_cache" ]; then
+        echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_BASE/hub_cache"
+        ln -snf "$NETWORK_SHARE_BASE/hub_cache" "$HOME/hf_hub"  
+    elif [ -z "$NO_NETWORK_SHARE" ]; then
+        echo "Unable to find main hf_hub, going to use personal hf_hub"
+        echo "Creating symlink: $HOME/hf_hub -> $NETWORK_SHARE_DIR/hf_hub"
+        ln -snf "$NETWORK_SHARE_DIR/hf_hub" "$HOME/hf_hub"
+    else
+        echo "This message shouldn't show up, ran into issues setting up hf_hub symlink"
+    fi
+    SETUP_CHANGED=1
+fi
+HF_HUB_DIR="$(readlink -f "$HOME/hf_hub")"
+
+
+### OTS MOVE DEVENV TO NETWORK-SHARE IF NOT ALREADY THERE###
+PARENT_DEV_ENV_DIR="$(dirname "$DEV_ENV_DIR")"
+NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
+
+if [ "$PARENT_DEV_ENV_DIR" != "$HOME/network-share" ] && [ "$PARENT_DEV_ENV_DIR" != "$NETWORK_SHARE_REALPATH" ]; then
+    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
+    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
+
+    echo "Moving $DEV_ENV_DIR to $NEW_LOCATION"
+    mv "$DEV_ENV_DIR" "$NEW_LOCATION"
+    DEV_ENV_DIR="$NEW_LOCATION"
+    SETUP_CHANGED=1
+fi
+
+
+### OTS .BASHRC CALLS .BASH_PROFILE ###
+if [ -f ~/.bashrc ]; then
+    # Check if the correct source command already exists
+    if ! grep -qF "$DEV_ENV_DIR/.bash_profile" ~/.bashrc; then
+        # Not found, check for the marker comment
+        if grep -qF "# source devenv .bash_profile" ~/.bashrc; then
+            # Marker found, replace the line after it with the correct source command
+            sed -i "/# source devenv .bash_profile/{n;s|.*|. \"$DEV_ENV_DIR/.bash_profile\"|;}" ~/.bashrc
+            echo "Updated .bash_profile sourcing in ~/.bashrc"
+        else
+            # Marker not found, append both lines
+            echo "" >> ~/.bashrc
+            echo "# source devenv .bash_profile" >> ~/.bashrc
+            echo ". \"$DEV_ENV_DIR/.bash_profile\"" >> ~/.bashrc
+            echo "Added .bash_profile sourcing to ~/.bashrc"
+        fi
+        SETUP_CHANGED=1
+    fi
+fi
+
+### OTS GITCONFIG ###
+set_git_config_if_missing "user.name" "HDCharles" "Git user.name configured"
+set_git_config_if_missing "user.email" "charlesdavidhernandez@gmail.com" "Git user.email configured"
+set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git-credential" "GitHub credential helper configured"
+set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
+set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
+set_git_config_if_missing "difftool.vscode.cmd" "code wait --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
+set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template"
+set_git_config_if_missing "safe.directory" "$DEV_ENV_DIR" "set devenv as a safe directory"
+
+### OTS LAUNCH.JSON ###
+TEMPLATE_LAUNCH="$DEV_ENV_DIR/other_files/launch.json"
+check_and_symlink "$HOME/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
+check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
+
+### OTS TMUX CONFIG ###
+check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
+
+### OTS RHDEV ###
+if [ ! -d "$HOME/rhdev" ]; then
+    echo "rhdev virtual environment not found. Running env_setup..."
+    env_setup
+    SETUP_CHANGED=1
+fi
+
+### OTS VSCODE EXTENTIONS ###
+if [ $SETUP_CHANGED -eq 0 ] && command -v code &> /dev/null; then
+    REQUIRED_EXTENSIONS=(
+        "anthropic.claude-code"
+        "eamodio.gitlens"
+        "letmaik.git-tree-compare"
+        "ms-python.debugpy"
+        "ms-python.python"
+        "ms-python.vscode-pylance"
+        "ms-python.vscode-python-envs"
+        "zhoukz.safetensors"
+    )
+    # Get list of installed extensions once
+    INSTALLED_EXTENSIONS=$(code --list-extensions)
+
+    for ext in "${REQUIRED_EXTENSIONS[@]}"; do
+        if ! echo "$INSTALLED_EXTENSIONS" | grep -q "^$ext$"; then
+            echo "Installing VSCode extension: $ext"
+            output=$(code --install-extension "$ext" 2>&1)
+            
+
+            # Check if installation was successful by looking for success indicators in output
+            if echo "$output" | grep -qi "successfully installed"; then
+                :
+            else
+                echo "$output"
+                echo "Unable to install extension $ext, please install manually to avoid triggering this on each restart"
+            fi
+        fi
+    done
+fi
+
+### OTS fzf
+if [ ! -e "$HOME/.fzf" ]; then
+    fzf_setup
+fi
+
+### OTS CLAUDE CODE ###
+if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
+    echo "No gcloud setup detected. Running gcloud setup for Claude"
+    gcloud_setup
+fi
+
+if ! command -v claude &> /dev/null; then
+    echo "Claude Code not found. Running claude_setup..."
+    claude_setup
+fi
+
+# Refresh bash profile if any setup changes were made
+if [ $SETUP_CHANGED -eq 1 ]; then
+    echo "Some setup changes were detected. Reloading bash aliases..."
+    source ~/.bashrc
+    return 2>/dev/null || exit
+else
+    # Reset the counter on successful load without changes
+    unset BASH_PROFILE_RELOAD_COUNT
+fi
