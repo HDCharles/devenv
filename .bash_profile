@@ -22,6 +22,9 @@ safe_source ~/rhdev/bin/activate # uv venv activate
 if [ -f ~/.fzf.bash ]; then # some devservers have fzf in usr/bin which takes precedence over this one
     export PATH="/home/HDCharles/.fzf/bin:${PATH}"
 fi
+if [ -n "$TMUX" ]; then
+export VSCODE_IPC_HOOK_CLI=$(ls -t /run/user/$(id -u)/vscode-ipc-*.sock 2>/dev/null | head -1)
+fi
 ############ DIRS ############
 export REPOS="$HOME/repos"
 export PYTHONSTARTUP="$DEV_ENV_DIR/.pythonrc"
