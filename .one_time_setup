@@ -205,6 +205,8 @@ elif [ -d "/raid/engine" ]; then
     NETWORK_SHARE_BASE="/raid/engine"
 elif [ -d "/mnt/nfs-preprod-1/engine" ]; then
     NETWORK_SHARE_BASE="/mnt/nfs-preprod-1/engine"
+elif [ -d "/mnt/nfs-preprod-2/engine" ]; then
+    NETWORK_SHARE_BASE="/mnt/nfs-preprod-2/engine"
 else
     # Prompt for custom network share base if in an interactive shell
     if [ -t 0 ]; then
