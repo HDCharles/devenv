@@ -103,6 +103,30 @@ if [ $COMMANDS_SETUP ]; then
         fi
     }
 
+    dolog() {
+        local timestamp logfile logdir
+        logdir="$HOME/logs"
+        mkdir -p "$logdir"
+        timestamp="$(date '+%Y%m%d-%H%M%S')"
+        logfile="${logdir}/${timestamp}_$(echo "$1 $2" | tr ' /./' '-' | tr -s '-').log"
+        echo "Logging to: $logfile"
+        "$@" 2>&1 | tee "$logfile"
+        echo "Log saved to: $logfile"
+    }
+
+    seelogs() {
+        local logdir="$HOME/logs"
+        if [ ! -d "$logdir" ]; then
+            echo "No logs directory found at $logdir"
+            return 1
+        fi
+        local selected
+        selected=$(ls -1t "$logdir"/*.log 2>/dev/null | fzf --preview 'tail -50 {}')
+        if [ -n "$selected" ]; then
+            code "$selected"
+        fi
+    }
+
     # Function to set VS Code window title prefix
     setwindow() {
         local new_prefix="$1"
