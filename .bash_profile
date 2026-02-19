@@ -222,7 +222,7 @@ if [ $COMMANDS_SETUP ]; then
                 echo "  $(basename "$dir"): $dir"
             fi
         done
-        
+
         # Also check in common project directories
         if [ -d ~/repos ]; then
             for dir in ~/repos/*; do
@@ -231,6 +231,24 @@ if [ $COMMANDS_SETUP ]; then
                 fi
             done
         fi
+    }
+
+    toggle_env() {
+        if [ -z "$VIRTUAL_ENV" ]; then
+            echo "No virtual environment active. Activating rhdev..."
+            . ~/rhdev/bin/activate
+        elif [[ "$VIRTUAL_ENV" == *"/rhdev" ]]; then
+            deactivate
+            . ~/vllm/bin/activate
+        elif [[ "$VIRTUAL_ENV" == *"/vllm" ]]; then
+            deactivate
+            . ~/rhdev/bin/activate
+        else
+            echo "Unknown virtual environment: $VIRTUAL_ENV"
+            echo "Available options: rhdev, vllm"
+            return 1
+        fi
+        echo "Active environment: $VIRTUAL_ENV"
     }
 
     gitclean() {
@@ -303,26 +321,17 @@ if [ $COMMANDS_SETUP ]; then
 
     repo_refresh(){
         refresh_repo_impl "llm-compressor"
-        refresh_repo_impl "vllm"
+        # refresh_repo_impl "vllm"
         refresh_repo_impl "compressed-tensors"
-        refresh_repo_impl "speculators"
+        # refresh_repo_impl "speculators"
         cd
         echo "repos updated, to install use \`env_install\`"
     }
 
-    env_install_source() {
+    env_install() {
         cd
         . ~/rhdev/bin/activate
         cd repos
-        
-
-        # cd speculators
-        # uv pip install -e .[dev]
-        # cd ..
-
-        cd vllm
-        uv pip install -e .[dev]
-        cd ..
 
         cd llm-compressor
         uv pip install -e .[dev]
@@ -331,31 +340,33 @@ if [ $COMMANDS_SETUP ]; then
         cd compressed-tensors
         uv pip install -e .[dev]
         cd ..
+
+        echo "rhdev environment packages installed"
     }
 
-    env_install_main() {
+    vllm_install_main() {
         cd
-        . ~/rhdev/bin/activate
+        . ~/vllm/bin/activate
         cd repos
-        
-        # cd speculators
-        # uv pip install -e .[dev]
-        # cd ..
 
         cd vllm
         VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
         cd ..
 
-        cd llm-compressor
-        uv pip install -e .[dev]
-        cd ..
-
-        cd compressed-tensors
-        uv pip install -e .[dev]
-        cd ..
+        echo "vllm environment packages installed (precompiled)"
     }
 
-    env_install(){ env_install_main; }
+    vllm_install_source() {
+        cd
+        . ~/vllm/bin/activate
+        cd repos
+
+        cd vllm
+        uv pip install -e .[dev]
+        cd ..
+
+        echo "vllm environment packages installed (from source)"
+    }
 fi
 ############ ONE TIME SETUP ############
 # MARK: ONE TIME SETUP

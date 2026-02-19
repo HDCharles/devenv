@@ -24,7 +24,12 @@ refresh_repo_impl(){
 
 env_setup() {
     cd
-    uv venv --python 3.11 rhdev 
+    # Create vllm environment
+    uv venv --python 3.11 vllm
+    echo "Created vllm environment"
+    deactivate
+    # Create rhdev environment
+    uv venv --python 3.11 rhdev
     . ~/rhdev/bin/activate
 
     uv pip install isort
@@ -32,6 +37,7 @@ env_setup() {
     uv pip install debugpy
     uv pip install tblib
 
+    # Clone repos
     mkdir repos
     cd repos
     git clone https://github.com/vllm-project/llm-compressor
@@ -39,7 +45,8 @@ env_setup() {
     git clone https://github.com/vllm-project/vllm
     git clone https://github.com/vllm-project/speculators
 
-    echo "call \`env_install\` to complete setup"
+    echo "call \`env_install\` to install packages in rhdev"
+    echo "call \`vllm_install_main\` or \`vllm_install_source\` to install packages in vllm"
 }
 
 fzf_setup() {
@@ -271,8 +278,8 @@ check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
 ### OTS RHDEV ###
-if [ ! -d "$HOME/rhdev" ]; then
-    echo "rhdev virtual environment not found. Running env_setup..."
+if [ ! -d "$HOME/rhdev" ] || [ ! -d "$HOME/vllm" ]; then
+    echo "Virtual environment(s) not found. Running env_setup..."
     env_setup
     SETUP_CHANGED=1
 fi
