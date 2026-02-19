@@ -108,9 +108,12 @@ if [ $COMMANDS_SETUP ]; then
         logdir="$HOME/logs"
         mkdir -p "$logdir"
         timestamp="$(date '+%Y%m%d-%H%M%S')"
-        logfile="${logdir}/${timestamp}_$(echo "$1 $2" | tr ' /./' '-' | tr -s '-').log"
+        logfile="${logdir}/${timestamp}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
         echo "Logging to: $logfile"
-        "$@" 2>&1 | tee "$logfile"
+        {
+            echo "Command: $*"
+            "$@"
+        } 2>&1 | tee "$logfile"
         echo "Log saved to: $logfile"
     }
 
