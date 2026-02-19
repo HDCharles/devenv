@@ -307,9 +307,9 @@ if [ $COMMANDS_SETUP ]; then
         # uv pip install -e .[dev]
         # cd ..
 
-        # cd vllm
-        # uv pip install -e .[dev]
-        # cd ..
+        cd vllm
+        uv pip install -e .[dev]
+        cd ..
 
         cd llm-compressor
         uv pip install -e .[dev]
