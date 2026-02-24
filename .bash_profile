@@ -13,10 +13,12 @@ if [ $AUTO_UPDATE_DEVENV ]; then
     export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     # Only run auto-update in interactive shells
     if [[ $- == *i* ]] && [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
+        old_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD)
         git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
         git_exit_code=$?
-        # Only reload if git pull succeeded (exit code 0) and made changes
-        if [ $git_exit_code -eq 0 ] && [[ "$git_output" != "Already up to date." ]]; then
+        new_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD)
+        # Only reload if git pull succeeded and changed something
+        if [ $git_exit_code -eq 0 ] && [ "$old_head" != "$new_head" ]; then
             echo "DEV_ENV updated from git. Reloading bash aliases..."
             source ~/.bashrc
             return 2>/dev/null || exit
