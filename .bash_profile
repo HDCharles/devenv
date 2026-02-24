@@ -323,9 +323,9 @@ if [ $COMMANDS_SETUP ]; then
 
     repo_refresh(){
         refresh_repo_impl "llm-compressor"
-        # refresh_repo_impl "vllm"
+        refresh_repo_impl "vllm"
         refresh_repo_impl "compressed-tensors"
-        # refresh_repo_impl "speculators"
+        refresh_repo_impl "speculators"
         cd
         echo "repos updated, to install use \`env_install\`"
     }
