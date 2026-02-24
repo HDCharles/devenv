@@ -253,7 +253,7 @@ if [ $COMMANDS_SETUP ]; then
         echo "Active environment: $VIRTUAL_ENV"
     }
 
-    ta() {
+    te() {
         toggle_env
     }
 
