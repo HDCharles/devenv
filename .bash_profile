@@ -253,6 +253,10 @@ if [ $COMMANDS_SETUP ]; then
         echo "Active environment: $VIRTUAL_ENV"
     }
 
+    ta() {
+        toggle_env
+    }
+
     gitclean() {
         set -e
 
