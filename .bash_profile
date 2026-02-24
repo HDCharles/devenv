@@ -1,4 +1,3 @@
-
 export AUTO_UPDATE_DEVENV="true"
 export EXTERNAL_SETUPS="true"
 export DIRS_SETUP="true"
@@ -104,11 +103,22 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     dolog() {
-        local timestamp logfile logdir
+        local timestamp logfile logdir title=""
         logdir="$HOME/logs"
         mkdir -p "$logdir"
+
+        # Parse optional -t flag
+        if [ "$1" = "-t" ]; then
+            title="$2"
+            shift 2
+        fi
+
         timestamp="$(date '+%Y%m%d-%H%M%S')"
-        logfile="${logdir}/${timestamp}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
+        if [ -n "$title" ]; then
+            logfile="${logdir}/${timestamp}_${title}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
+        else
+            logfile="${logdir}/${timestamp}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
+        fi
         echo "Logging to: $logfile"
         {
             echo "Command: $*"
