@@ -218,10 +218,14 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     uvl() {
-        echo "UV virtual environments found:"
+        local env_paths=()
+        local env_display=()
+
+        # Collect environments from home directory
         for dir in ~/*; do
             if [ -d "$dir" ] && [ -f "$dir/bin/activate" ] && [ -f "$dir/pyvenv.cfg" ]; then
-                echo "  $(basename "$dir"): $dir"
+                env_paths+=("$dir")
+                env_display+=("$(basename "$dir")")
             fi
         done
 
@@ -229,9 +233,25 @@ if [ $COMMANDS_SETUP ]; then
         if [ -d ~/repos ]; then
             for dir in ~/repos/*; do
                 if [ -d "$dir" ] && [ -f "$dir/bin/activate" ] && [ -f "$dir/pyvenv.cfg" ]; then
-                    echo "  $(basename "$dir"): $dir"
+                    env_paths+=("$dir")
+                    env_display+=("repos/$(basename "$dir")")
                 fi
             done
+        fi
+
+        if [ ${#env_paths[@]} -eq 0 ]; then
+            echo "No UV virtual environments found"
+            return 1
+        fi
+
+        # Use fzf to select environment - display name but return the full path
+        local selected
+        selected=$(for i in "${!env_display[@]}"; do echo "${env_display[$i]} ${env_paths[$i]}"; done | fzf --prompt="Select environment: ")
+
+        if [ -n "$selected" ]; then
+            local env_path="${selected##* }"
+            echo "Activating: $env_path"
+            source "$env_path/bin/activate"
         fi
     }
 
