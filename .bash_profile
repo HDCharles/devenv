@@ -1,3 +1,4 @@
+# these are always enabled (the if statements are so you can collapse code sections)
 export AUTO_UPDATE_DEVENV="true"
 export EXTERNAL_SETUPS="true"
 export DIRS_SETUP="true"
@@ -392,6 +393,26 @@ if [ $COMMANDS_SETUP ]; then
         cd ..
 
         echo "vllm environment packages installed (from source)"
+    }
+
+    goto() {
+        if [ -z "$1" ]; then
+            echo "Usage: goto <file>"
+            return 1
+        fi
+
+        local target="$1"
+        local dir
+
+        # If file exists, resolve to absolute path first
+        if [ -e "$target" ]; then
+            target=$(realpath "$target")
+        fi
+
+        # Get parent directory
+        dir=$(dirname "$target")
+
+        cd "$dir" || return 1
     }
 fi
 ############ ONE TIME SETUP ############
