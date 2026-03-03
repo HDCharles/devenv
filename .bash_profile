@@ -8,7 +8,7 @@ export COMMANDS_SETUP="true"
 export ONE_TIME_SETUP="true"
 
 ############ AUTO UPDATE DEVENV ############
-# MARK: AUTO UPDATE DEVENV 
+# MARK: AUTO UPDATE DEVENV
 # git pull the dev env to get any updates
 if [ $AUTO_UPDATE_DEVENV ]; then
     export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,7 +30,7 @@ if [ $AUTO_UPDATE_DEVENV ]; then
 fi
 
 ############ EXTERNAL SETUPS ###########
-# MARK: EXTERNAL SETUPS 
+# MARK: EXTERNAL SETUPS
 if [ $EXTERNAL_SETUPS ]; then
     type deactivate &>/dev/null && deactivate # need to deactivate or else colors wont work
     safe_source() { if [ -f "$1" ]; then . "$1"; else echo "Warning: File not found: $1"; fi }
@@ -53,7 +53,7 @@ if [ $DIRS_SETUP ]; then
     export HF_DATASETS_CACHE="$HOME/hf_hub"
 fi
 ############ VARS ############
-# MARK: VARS 
+# MARK: VARS
 if [ $VARS_SETUP ]; then
     export CLAUDE_CODE_USE_VERTEX=1
     export CLOUD_ML_REGION=us-east5
@@ -418,8 +418,8 @@ if [ $COMMANDS_SETUP ]; then
 fi
 ############ ONE TIME SETUP ############
 # MARK: ONE TIME SETUP
-# one time setup tasks like installing extensions, setting git config, etc that we only want to do once 
+# one time setup tasks like installing extensions, setting git config, etc that we only want to do once
 # but want to be chekced on every shell start
 if [ $ONE_TIME_SETUP ]; then
-    safe_source "$DEV_ENV_DIR/.one_time_setup" 
+    safe_source "$DEV_ENV_DIR/.one_time_setup"
 fi
