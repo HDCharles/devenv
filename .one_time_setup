@@ -26,6 +26,13 @@ env_setup() {
     cd
     # Create vllm environment
     uv venv --python 3.11 vllm
+    . ~/vllm/bin/activate
+
+    uv pip install accelerate
+    uv pip install transformers
+    uv pip install vllm
+    uv pip install lm_eval
+
     echo "Created vllm environment"
     deactivate
     # Create rhdev environment
@@ -46,7 +53,7 @@ env_setup() {
     git clone https://github.com/vllm-project/speculators
 
     echo "call \`env_install\` to install packages in rhdev"
-    echo "call \`vllm_install_main\` or \`vllm_install_source\` to install packages in vllm"
+    echo "call \`vllm_install_main\` or \`vllm_install_source\` to install vllm"
 }
 
 fzf_setup() {
