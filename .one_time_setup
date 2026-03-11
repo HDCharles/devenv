@@ -40,6 +40,7 @@ env_setup() {
     uv venv --python 3.11 rhdev
     . ~/rhdev/bin/activate
 
+    uv pip install torch --index-url https://download.pytorch.org/whl/cu129
     uv pip install isort
     uv pip install pytest
     uv pip install debugpy
