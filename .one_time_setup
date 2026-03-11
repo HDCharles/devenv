@@ -40,7 +40,10 @@ env_setup() {
     uv venv --python 3.11 rhdev
     . ~/rhdev/bin/activate
 
-    uv pip install torch --index-url https://download.pytorch.org/whl/cu129
+    # (install right torch cuda version)
+    CUDA_VERSION=$(nvcc --version | grep -oP 'release \K[0-9]+\.[0-9]+')                                                                                                                                                                                 
+    CUDA_TAG="cu$(echo $CUDA_VERSION | tr -d '.')"                                                                                                                                                                                                       
+    uv pip install torch --index-url "https://download.pytorch.org/whl/$CUDA_TAG"   
     uv pip install isort
     uv pip install pytest
     uv pip install debugpy
