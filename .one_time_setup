@@ -70,8 +70,17 @@ fzf_setup() {
 gcloud_setup() {
     cd
     gcloud init
+    echo ""
+    echo "**************************************************************"
+    echo -e "\033[1m>>> ADD PROJECT ID: itpc-gcp-ai-eng-claude <<<\033[0m"
+    echo "**************************************************************"
+    echo ""
     gcloud auth application-default login
-    echo "add project ID itpc-gcp-ai-eng-claude"
+    echo ""
+    echo "**************************************************************"
+    echo -e "\033[1m>>> ADD PROJECT ID: itpc-gcp-ai-eng-claude <<<\033[0m"
+    echo "**************************************************************"
+    echo ""
     gcloud auth application-default set-quota-project cloudability-it-gemini
 }
 
