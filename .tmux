@@ -2,7 +2,7 @@
 if [ -n "$TMUX" ]; then
 export VSCODE_IPC_HOOK_CLI=$(ls -t /run/user/$(id -u)/vscode-ipc-*.sock 2>/dev/null | head -1)
 # Auto-call ref when attaching to this tmux session so VSCODE_IPC_HOOK_CLI gets refreshed
-tmux set-hook -g client-attached 'send-keys "ref" Enter'
+tmux set-hook -g client-attached 'run-shell "pane_cmd=\"$(tmux display-message -p \"#{pane_current_command}\")\"; case \"$pane_cmd\" in bash|zsh|sh) tmux send-keys \"ref\" Enter;; esac"'
 # Update PATH to use latest VS Code server in tmux
     if [ -d "$HOME/.vscode-server/cli/servers" ]; then
         # Remove any old vscode-server paths from PATH
