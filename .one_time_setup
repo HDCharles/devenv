@@ -239,21 +239,6 @@ fi
 HF_HUB_DIR="$(readlink -f "$HOME/hf_hub")"
 
 
-### OTS MOVE DEVENV TO NETWORK-SHARE IF NOT ALREADY THERE###
-PARENT_DEV_ENV_DIR="$(dirname "$DEV_ENV_DIR")"
-NETWORK_SHARE_REALPATH="$(readlink -f "$HOME/network-share")"
-
-if [ "$PARENT_DEV_ENV_DIR" != "$HOME/network-share" ] && [ "$PARENT_DEV_ENV_DIR" != "$NETWORK_SHARE_REALPATH" ]; then
-    DEV_ENV_NAME="$(basename "$DEV_ENV_DIR")"
-    NEW_LOCATION="$HOME/network-share/$DEV_ENV_NAME"
-
-    echo "Moving $DEV_ENV_DIR to $NEW_LOCATION"
-    mv "$DEV_ENV_DIR" "$NEW_LOCATION"
-    DEV_ENV_DIR="$NEW_LOCATION"
-    SETUP_CHANGED=1
-fi
-
-
 ### OTS .BASHRC CALLS .BASH_PROFILE ###
 if [ -f ~/.bashrc ]; then
     # Check if the correct source command already exists
