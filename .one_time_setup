@@ -155,6 +155,15 @@ fi
 # Track if any setup changes are made
 SETUP_CHANGED=0
 
+### OTS UV UPDATE ###
+# Auto-update uv if a new version is available (check once per day)
+uv_update_marker="$HOME/.uv_last_update_check"
+if [ ! -f "$uv_update_marker" ] || [ $(find "$uv_update_marker" -mtime +1 2>/dev/null) ]; then
+    if command -v uv &>/dev/null && command -v pip &>/dev/null; then
+        echo "Checking for uv updates..."
+        pip install --upgrade uv --quiet 2>/dev/null && touch "$uv_update_marker"
+    fi
+fi
 
 ### OTS NETWORK-SHARE DIR ###
 export NO_NETWORK_SHARE=
