@@ -160,8 +160,11 @@ SETUP_CHANGED=0
 uv_update_marker="$HOME/.uv_last_update_check"
 if [ ! -f "$uv_update_marker" ] || [ $(find "$uv_update_marker" -mtime +1 2>/dev/null) ]; then
     if command -v uv &>/dev/null && command -v pip &>/dev/null; then
-        echo "Checking for uv updates..."
-        pip install --upgrade uv --quiet 2>/dev/null && touch "$uv_update_marker"
+        output=$(pip install --upgrade uv 2>&1)
+        if echo "$output" | grep -q "Successfully installed"; then
+            echo "uv updated: $(echo "$output" | grep -o 'uv-[0-9.]*')"
+        fi
+        touch "$uv_update_marker"
     fi
 fi
 

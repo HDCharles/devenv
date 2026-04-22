@@ -381,7 +381,7 @@ if [ $COMMANDS_SETUP ]; then
         # cd vllm
         # VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
         # cd ..
-        uv pip install vllm
+        uv pip install vllm --extra-index-url https://download.pytorch.org/whl/${UV_TORCH_BACKEND}
 
         echo "vllm environment packages installed (precompiled)"
     }
