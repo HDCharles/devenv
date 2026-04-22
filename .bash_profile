@@ -12,20 +12,20 @@ export ONE_TIME_SETUP="true"
 # git pull the dev env to get any updates
 if [ $AUTO_UPDATE_DEVENV ]; then
     export DEV_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    # Only run auto-update in interactive shells
+    # Only run auto-update in interactive shells (runs in background to avoid slow NFS blocking shell startup)
     if [[ $- == *i* ]] && [ -n "$DEV_ENV_DIR" ] && [ -d "$DEV_ENV_DIR/.git" ]; then
-        old_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD)
-        git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
-        git_exit_code=$?
-        new_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD)
-        # Only reload if git pull succeeded and changed something
-        if [ $git_exit_code -eq 0 ] && [ "$old_head" != "$new_head" ]; then
-            echo "DEV_ENV updated from git. Reloading bash aliases..."
-            source ~/.bashrc
-            return 2>/dev/null || exit
-        elif [ $git_exit_code -ne 0 ]; then
-            echo "Warning: git pull failed in DEV_ENV_DIR. Run 'cd \$DEV_ENV_DIR && git status' to check."
-        fi
+        (
+            old_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD 2>/dev/null)
+            git_output=$(cd "$DEV_ENV_DIR" && git pull 2>&1)
+            git_exit_code=$?
+            new_head=$(cd "$DEV_ENV_DIR" && git rev-parse HEAD 2>/dev/null)
+            if [ $git_exit_code -eq 0 ] && [ "$old_head" != "$new_head" ]; then
+                echo -e "\nDevenv updated. Run 'ref' to load changes."
+            elif [ $git_exit_code -ne 0 ]; then
+                echo -e "\nWarning: devenv git pull failed. Run 'cd \$DEV_ENV_DIR && git status' to check."
+            fi
+        ) &
+        disown
     fi
 fi
 
