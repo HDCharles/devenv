@@ -296,24 +296,24 @@ if [ $SETUP_CHANGED -eq 0 ] && command -v code &> /dev/null; then
         "ms-python.vscode-python-envs"
         "zhoukz.safetensors"
     )
-    # Get list of installed extensions once
-    INSTALLED_EXTENSIONS=$(code --list-extensions)
+    # Get list of installed extensions once — skip entirely if VS Code server is unreachable
+    if ! INSTALLED_EXTENSIONS=$(code --list-extensions 2>/dev/null); then
+        echo "VS Code server not reachable, skipping extension check"
+    else
+        for ext in "${REQUIRED_EXTENSIONS[@]}"; do
+            if ! echo "$INSTALLED_EXTENSIONS" | grep -q "^$ext$"; then
+                echo "Installing VSCode extension: $ext"
+                output=$(code --install-extension "$ext" 2>&1)
 
-    for ext in "${REQUIRED_EXTENSIONS[@]}"; do
-        if ! echo "$INSTALLED_EXTENSIONS" | grep -q "^$ext$"; then
-            echo "Installing VSCode extension: $ext"
-            output=$(code --install-extension "$ext" 2>&1)
-            
-
-            # Check if installation was successful by looking for success indicators in output
-            if echo "$output" | grep -qi "successfully installed"; then
-                :
-            else
-                echo "$output"
-                echo "Unable to install extension $ext, please install manually to avoid triggering this on each restart"
+                if echo "$output" | grep -qi "successfully installed"; then
+                    :
+                else
+                    echo "$output"
+                    echo "Unable to install extension $ext, please install manually to avoid triggering this on each restart"
+                fi
             fi
-        fi
-    done
+        done
+    fi
 fi
 
 ### OTS fzf
