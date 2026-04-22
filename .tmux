@@ -1,6 +1,12 @@
 # make sure to set VSCODE_IPC_HOOK_CLI for tmux sessions to allow vscode cli commands to work
 if [ -n "$TMUX" ]; then
-export VSCODE_IPC_HOOK_CLI=$(ls -t /run/user/$(id -u)/vscode-ipc-*.sock 2>/dev/null | head -1)
+    _sock=$(ls -t /run/user/$(id -u)/vscode-ipc-*.sock 2>/dev/null | head -1)
+    if [ -n "$_sock" ] && [ -S "$_sock" ]; then
+        export VSCODE_IPC_HOOK_CLI="$_sock"
+    else
+        unset VSCODE_IPC_HOOK_CLI
+    fi
+    unset _sock
 # Auto-call ref when attaching to this tmux session so VSCODE_IPC_HOOK_CLI gets refreshed
 tmux set-hook -g client-attached 'run-shell "pane_cmd=\"$(tmux display-message -p \"#{pane_current_command}\")\"; case \"$pane_cmd\" in bash|zsh|sh) tmux send-keys \"ref\" Enter;; esac"'
 # Update PATH to use latest VS Code server in tmux
