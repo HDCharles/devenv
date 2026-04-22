@@ -46,6 +46,7 @@ env_setup() {
     uv pip install debugpy
     uv pip install tblib
     uv pip install qwen_vl_utils
+    uv pip install lm_eval
 
     # Clone repos
     mkdir repos
