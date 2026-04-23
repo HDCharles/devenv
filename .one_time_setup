@@ -34,6 +34,7 @@ env_setup() {
     uv pip install vllm
     uv pip install lm_eval
     uv pip install qwen_vl_utils
+    uv pip install ray
 
     echo "Created vllm environment"
     deactivate
@@ -47,6 +48,7 @@ env_setup() {
     uv pip install tblib
     uv pip install qwen_vl_utils
     uv pip install lm_eval
+    uv pip install ray
 
     # Clone repos
     mkdir repos
