@@ -64,7 +64,7 @@ env_setup() {
 
 fzf_setup() {
     git clone https://github.com/junegunn/fzf.git ~/.fzf
-    ~/.fzf/install
+    ~/.fzf/install --all
 }
 
 gcloud_setup() {
@@ -75,6 +75,15 @@ gcloud_setup() {
     gcloud init
     gcloud auth application-default login
     gcloud auth application-default set-quota-project cloudability-it-gemini
+}
+
+finish_setup() {
+    if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
+        gcloud_setup
+    fi
+    if ! command -v gh &>/dev/null || ! gh auth status &>/dev/null; then
+        gh auth login
+    fi
 }
 
 claude_setup() {
@@ -157,6 +166,7 @@ fi
 
 # Track if any setup changes are made
 SETUP_CHANGED=0
+NEEDS_MANUAL_SETUP=0
 
 ### OTS UV UPDATE ###
 # Auto-update uv if a new version is available (check once per day)
@@ -187,26 +197,8 @@ elif [ -d "/mnt/nfs-preprod-1/engine" ]; then
 elif [ -d "/mnt/nfs-preprod-2/engine" ]; then
     NETWORK_SHARE_BASE="/mnt/nfs-preprod-2/engine"
 else
-    # Prompt for custom network share base if in an interactive shell
-    if [ -t 0 ]; then
-        echo "No network share base directory found in default locations."
-        read -p "Enter network share base directory (or press Enter to use /home): " CUSTOM_NETWORK_SHARE
-
-        if [ -n "$CUSTOM_NETWORK_SHARE" ] && [ -d "$CUSTOM_NETWORK_SHARE" ]; then
-            NETWORK_SHARE_BASE="$CUSTOM_NETWORK_SHARE"
-            echo "Using custom network share base: $NETWORK_SHARE_BASE"
-        elif [ -n "$CUSTOM_NETWORK_SHARE" ]; then
-            echo "Warning: Directory $CUSTOM_NETWORK_SHARE does not exist. Falling back to /home"
-            NETWORK_SHARE_BASE="/home"
-            NO_NETWORK_SHARE=1
-        else
-            NETWORK_SHARE_BASE="/home"
-            NO_NETWORK_SHARE=1
-        fi
-    else
-        NETWORK_SHARE_BASE="/home"
-        NO_NETWORK_SHARE=1
-    fi
+    NETWORK_SHARE_BASE="/home"
+    NO_NETWORK_SHARE=1
 fi
 
 NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
@@ -338,13 +330,22 @@ fi
 
 ### OTS CLAUDE CODE ###
 if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
-    echo "No gcloud setup detected. Running gcloud setup for Claude"
-    gcloud_setup
+    NEEDS_MANUAL_SETUP=1
+fi
+
+### OTS GH AUTH ###
+if ! command -v gh &>/dev/null || ! gh auth status &>/dev/null; then
+    NEEDS_MANUAL_SETUP=1
 fi
 
 if ! command -v claude &> /dev/null; then
     echo "Claude Code not found. Running claude_setup..."
     claude_setup
+fi
+
+### MANUAL ACTIONS SUMMARY ###
+if [ $NEEDS_MANUAL_SETUP -eq 1 ]; then
+    echo "[ACTION REQUIRED] Run 'finish_setup' to complete interactive setup steps"
 fi
 
 # Refresh bash profile if any setup changes were made
