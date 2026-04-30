@@ -73,7 +73,8 @@ rhdev_env_setup() {
     uv pip install qwen_vl_utils
     uv pip install lm_eval
     uv pip install ray
-
+    env_install
+    
     echo "Created rhdev environment"
     deactivate
 }
