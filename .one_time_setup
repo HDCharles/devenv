@@ -22,7 +22,27 @@ refresh_repo_impl(){
     echo "updated repo: $repo"
 }
 
-env_setup() {
+clone_repos() {
+    cd
+    if [ ! -d "$HOME/repos" ]; then
+        mkdir repos
+    fi
+    cd repos
+    if [ ! -d "llm-compressor" ]; then
+        git clone https://github.com/vllm-project/llm-compressor
+    fi
+    if [ ! -d "compressed-tensors" ]; then
+        git clone https://github.com/vllm-project/compressed-tensors
+    fi
+    if [ ! -d "vllm" ]; then
+        git clone https://github.com/vllm-project/vllm
+    fi
+    if [ ! -d "speculators" ]; then
+        git clone https://github.com/vllm-project/speculators
+    fi
+}
+
+vllm_env_setup() {
     cd
     # Create vllm environment
     uv venv --python 3.11 vllm
@@ -31,13 +51,17 @@ env_setup() {
     uv pip install torch
     uv pip install accelerate
     uv pip install transformers
-    uv pip install vllm
     uv pip install lm_eval
     uv pip install qwen_vl_utils
     uv pip install ray
+    vllm_install_main
 
     echo "Created vllm environment"
     deactivate
+}
+
+rhdev_env_setup() {
+    cd
     # Create rhdev environment
     uv venv --python 3.11 rhdev
     . ~/rhdev/bin/activate
@@ -50,16 +74,8 @@ env_setup() {
     uv pip install lm_eval
     uv pip install ray
 
-    # Clone repos
-    mkdir repos
-    cd repos
-    git clone https://github.com/vllm-project/llm-compressor
-    git clone https://github.com/vllm-project/compressed-tensors
-    git clone https://github.com/vllm-project/vllm
-    git clone https://github.com/vllm-project/speculators
-
-    env_install
-    vllm_install_main
+    echo "Created rhdev environment"
+    deactivate
 }
 
 fzf_setup() {
@@ -284,10 +300,24 @@ check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 ### OTS TMUX CONFIG ###
 check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
-### OTS RHDEV ###
-if [ ! -d "$HOME/rhdev" ] || [ ! -d "$HOME/vllm" ]; then
-    echo "Virtual environment(s) not found. Running env_setup..."
-    env_setup
+### OTS REPOS ###
+if [ ! -d "$HOME/repos" ]; then
+    echo "repos directory not found. Running clone_repos..."
+    clone_repos
+    SETUP_CHANGED=1
+fi
+
+### OTS VLLM ENV ###
+if [ ! -d "$HOME/vllm" ]; then
+    echo "vllm virtual environment not found. Running vllm_env_setup..."
+    vllm_env_setup
+    SETUP_CHANGED=1
+fi
+
+### OTS RHDEV ENV ###
+if [ ! -d "$HOME/rhdev" ]; then
+    echo "rhdev virtual environment not found. Running rhdev_env_setup..."
+    rhdev_env_setup
     SETUP_CHANGED=1
 fi
 
@@ -328,7 +358,7 @@ if [ ! -e "$HOME/.fzf" ]; then
     fzf_setup
 fi
 
-### OTS CLAUDE CODE ###
+### OTS CLAUDE CODE CREDS ###
 if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
     NEEDS_MANUAL_SETUP=1
 fi
