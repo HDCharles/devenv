@@ -160,6 +160,25 @@ check_and_symlink(){
     fi
 }
 
+# Test if chmod works on a directory (some filesystems like CIFS/SMB don't support it)
+test_chmod_support(){
+    local test_dir="$1"
+    local test_file="$test_dir/.chmod_test_$$"
+
+    # Try to create a test file and chmod it
+    if touch "$test_file" 2>/dev/null; then
+        if chmod 600 "$test_file" 2>/dev/null; then
+            rm -f "$test_file" 2>/dev/null
+            return 0  # chmod supported
+        else
+            rm -f "$test_file" 2>/dev/null
+            return 1  # chmod not supported
+        fi
+    else
+        return 1  # can't create file
+    fi
+}
+
 ############ ONE TIME SETUP ############
 # Only run one-time setup in interactive shells
 if [[ $- != *i* ]]; then
@@ -200,22 +219,47 @@ fi
 
 ### OTS NETWORK-SHARE DIR ###
 export NO_NETWORK_SHARE=
+NETWORK_SHARE_BASE=""
+
+# If symlink already exists, use it
 if [ -L "$HOME/network-share" ]; then
     NETWORK_SHARE_DIR="$(readlink -f "$HOME/network-share")"
     NETWORK_SHARE_BASE="$(dirname "$NETWORK_SHARE_DIR")"
-elif [ -d "/dev-network-share/users/engine" ]; then
-    NETWORK_SHARE_BASE="/dev-network-share/users/engine"
-elif [ -d "/mnt/data/engine" ]; then
-    NETWORK_SHARE_BASE="/mnt/data/engine"
-elif [ -d "/raid/engine" ]; then
-    NETWORK_SHARE_BASE="/raid/engine"
-elif [ -d "/mnt/nfs-preprod-1/engine" ]; then
-    NETWORK_SHARE_BASE="/mnt/nfs-preprod-1/engine"
-elif [ -d "/mnt/nfs-preprod-2/engine" ]; then
-    NETWORK_SHARE_BASE="/mnt/nfs-preprod-2/engine"
 else
-    NETWORK_SHARE_BASE="/home"
-    NO_NETWORK_SHARE=1
+    # List of candidate network share directories
+    CANDIDATE_DIRS=(
+        "/dev-network-share/users/engine"
+        "/mnt/data/engine"
+        "/mnt/nvme-data/engine"
+        "/raid/engine"
+        "/mnt/nfs-preprod-1/engine"
+        "/mnt/nfs-preprod-2/engine"
+    )
+
+    # First pass: try to find a directory that exists AND supports chmod
+    for dir in "${CANDIDATE_DIRS[@]}"; do
+        if [ -d "$dir" ] && test_chmod_support "$dir"; then
+            NETWORK_SHARE_BASE="$dir"
+            break
+        fi
+    done
+
+    # Second pass: if no chmod-capable dir found, accept any existing dir
+    if [ -z "$NETWORK_SHARE_BASE" ]; then
+        for dir in "${CANDIDATE_DIRS[@]}"; do
+            if [ -d "$dir" ]; then
+                NETWORK_SHARE_BASE="$dir"
+                echo "Warning: Selected network share at $dir does not support chmod"
+                break
+            fi
+        done
+    fi
+
+    # Final fallback: use /home
+    if [ -z "$NETWORK_SHARE_BASE" ]; then
+        NETWORK_SHARE_BASE="/home"
+        NO_NETWORK_SHARE=1
+    fi
 fi
 
 NETWORK_SHARE_DIR="$NETWORK_SHARE_BASE/$USER"
