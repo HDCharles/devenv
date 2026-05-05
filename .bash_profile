@@ -108,7 +108,7 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     dolog() {
-        local timestamp logfile logdir title=""
+        local timestamp logfile logdir title="" cmd_part
         logdir="$HOME/logs"
         mkdir -p "$logdir"
 
@@ -119,10 +119,13 @@ if [ $COMMANDS_SETUP ]; then
         fi
 
         timestamp="$(date '+%Y%m%d-%H%M%S')"
+        # Truncate command part to max 100 chars
+        cmd_part="$(echo "$@" | tr ' /./' '-' | tr -s '-' | cut -c1-100)"
+
         if [ -n "$title" ]; then
-            logfile="${logdir}/${timestamp}_${title}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
+            logfile="${logdir}/${timestamp}_${title}_${cmd_part}.log"
         else
-            logfile="${logdir}/${timestamp}_$(echo "$@" | tr ' /./' '-' | tr -s '-').log"
+            logfile="${logdir}/${timestamp}_${cmd_part}.log"
         fi
         echo "Logging to: $logfile"
         {
@@ -139,7 +142,33 @@ if [ $COMMANDS_SETUP ]; then
             return 1
         fi
         local selected
-        selected=$(ls -1t "$logdir"/*.log 2>/dev/null | fzf --preview 'tail -50 {}')
+        selected=$(ls -lht "$logdir"/*.log 2>/dev/null | awk '{
+            size = $5
+            file = $9
+
+            # Parse size with suffix (K, M, G)
+            num = size
+            suffix = ""
+            if (size ~ /[0-9][KMG]$/) {
+                num = substr(size, 1, length(size)-1)
+                suffix = substr(size, length(size), 1)
+            }
+
+            # Convert to bytes for comparison
+            bytes = num
+            if (suffix == "K") bytes = num * 1024
+            else if (suffix == "M") bytes = num * 1024 * 1024
+            else if (suffix == "G") bytes = num * 1024 * 1024 * 1024
+
+            # Color codes: white, yellow, orange (yellow bold), red
+            if (bytes < 10240) color = "\033[0m"           # white (<10K)
+            else if (bytes < 102400) color = "\033[33m"    # yellow (<100K)
+            else if (bytes < 1048576) color = "\033[1;33m" # orange/bold yellow (<1M)
+            else color = "\033[31m"                         # red (>=1M)
+
+            reset = "\033[0m"
+            printf "%s%-6s%s  %s\n", color, size, reset, file
+        }' | fzf --ansi --preview 'tail -50 $(echo {} | awk "{print \$NF}")' | awk '{print $NF}')
         if [ -n "$selected" ]; then
             code "$selected"
         fi
