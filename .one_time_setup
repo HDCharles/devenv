@@ -95,31 +95,28 @@ gcloud_setup() {
 }
 
 configure_git_identity() {
+    if ! gh auth status &>/dev/null; then
+        NEEDS_MANUAL_SETUP=1
+        return 1
+    fi
+
     # Pull name from GitHub if missing
     if [ -z "$(git config --global user.name)" ]; then
-        if gh auth status &>/dev/null; then
-            local gh_name
-            gh_name="$(gh api user --jq '.name // .login' 2>/dev/null)"
-            if [ -n "$gh_name" ]; then
-                git config --global user.name "$gh_name"
-                echo "Git user.name configured from GitHub: $gh_name"
-            fi
-        else
-            echo "Warning: gh not authenticated, git user.name not set"
+        local gh_name
+        gh_name="$(gh api user --jq '.name // .login' 2>/dev/null)"
+        if [ -n "$gh_name" ]; then
+            git config --global user.name "$gh_name"
+            echo "Git user.name configured from GitHub: $gh_name"
         fi
     fi
 
     # Pull email from GitHub if missing
     if [ -z "$(git config --global user.email)" ]; then
-        if gh auth status &>/dev/null; then
-            local gh_email
-            gh_email="$(gh api user/emails --jq '.[] | select(.primary) | .email' 2>/dev/null)"
-            if [ -n "$gh_email" ]; then
-                git config --global user.email "$gh_email"
-                echo "Git user.email configured from GitHub: $gh_email"
-            fi
-        else
-            echo "Warning: gh not authenticated, git user.email not set"
+        local gh_email
+        gh_email="$(gh api user/emails --jq '.[] | select(.primary) | .email' 2>/dev/null)"
+        if [ -n "$gh_email" ]; then
+            git config --global user.email "$gh_email"
+            echo "Git user.email configured from GitHub: $gh_email"
         fi
     fi
 
@@ -137,8 +134,6 @@ configure_git_identity() {
             echo "$expected_sob" >> "$git_template"
             echo "Git commit template updated with your identity"
         fi
-    elif [ ! -f "$git_template" ] && [ -f "$git_template_base" ]; then
-        cp "$git_template_base" "$git_template"
     fi
 }
 
@@ -149,7 +144,7 @@ finish_setup() {
     if ! command -v gh &>/dev/null || ! gh auth status &>/dev/null; then
         gh auth login
     fi
-    configure_git_identity
+    source ~/.bashrc
 }
 
 claude_setup() {
@@ -381,9 +376,7 @@ set_git_credential_helper_if_missing "https://github.com" "!/usr/bin/gh auth git
 set_git_credential_helper_if_missing "https://gist.github.com" "!/usr/bin/gh auth git-credential" "Gist credential helper configured"
 set_git_config_if_missing "diff.tool" "vscode" "Git diff tool configured"
 set_git_config_if_missing "difftool.vscode.cmd" "code --wait --diff \$LOCAL \$REMOTE" "Git difftool.vscode.cmd configured"
-if [ ! -f "$DEV_ENV_DIR/.git-template" ] && [ -f "$DEV_ENV_DIR/.git-template.base" ]; then
-    cp "$DEV_ENV_DIR/.git-template.base" "$DEV_ENV_DIR/.git-template"
-fi
+configure_git_identity
 set_git_config_if_missing "commit.template" "$DEV_ENV_DIR/.git-template" "Git commit template configured: $DEV_ENV_DIR/.git-template" "true"
 set_git_config_if_missing "safe.directory" "$DEV_ENV_DIR" "set devenv as a safe directory"
 
