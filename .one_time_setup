@@ -40,6 +40,9 @@ clone_repos() {
     if [ ! -d "speculators" ]; then
         git clone https://github.com/vllm-project/speculators
     fi
+    if [ ! -d "llm-compressor-testing" ]; then
+        git clone https://github.com/neuralmagic/llm-compressor-testing
+    fi
 }
 
 vllm_env_setup() {
@@ -392,9 +395,16 @@ check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
 ### OTS REPOS ###
-if [ ! -d "$HOME/repos/llm-compressor" ] || [ ! -d "$HOME/repos/compressed-tensors" ] || \
-   [ ! -d "$HOME/repos/vllm" ] || [ ! -d "$HOME/repos/speculators" ] || [ ! -d "$HOME/repos/llm-compressor-testing" ]; then
-    echo "One or more repos not found. Running clone_repos..."
+MISSING_REPOS=()
+[ ! -d "$HOME/repos/llm-compressor" ] && MISSING_REPOS+=("llm-compressor")
+[ ! -d "$HOME/repos/compressed-tensors" ] && MISSING_REPOS+=("compressed-tensors")
+[ ! -d "$HOME/repos/vllm" ] && MISSING_REPOS+=("vllm")
+[ ! -d "$HOME/repos/speculators" ] && MISSING_REPOS+=("speculators")
+[ ! -d "$HOME/repos/llm-compressor-testing" ] && MISSING_REPOS+=("llm-compressor-testing")
+
+if [ ${#MISSING_REPOS[@]} -gt 0 ]; then
+    echo "Missing repos: ${MISSING_REPOS[*]}"
+    echo "Running clone_repos to clone: llm-compressor, compressed-tensors, vllm, speculators"
     clone_repos
     SETUP_CHANGED=1
 fi
