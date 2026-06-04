@@ -74,9 +74,9 @@ This consists of 4 parts
       `dolog <command>` all output of command will be put in a log file with cur time and part of command in the name
       `dolog -t <label> <command>` the log file will also have the label as part of the time
     - seelogs - see all logfiles in fzf window (shows you size, preview and colors files by size)
-    - repo_refresh/env_install/vllm_install_main/vllm_install_source - various uv venv helpers
+    - repo_refresh/rhdev_install/vllm_install_main/vllm_install_source - various uv venv helpers
       repo_refresh - goes to each repo and does git pull
-      env_install - installs llm-comprsesor and compressed-tensors from source to rhdev venv
+      rhdev_install - installs llm-compressor and compressed-tensors from source to rhdev venv
       vllm_install_main - installs prebuilt vllm to vllm venv
       vllm_install_source - installs vllm to vllm venv from source (necessary on B200/H100 sometimes, very slow)
     - setwindow - the actual functionality for setwin

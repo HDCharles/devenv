@@ -427,10 +427,10 @@ if [ $COMMANDS_SETUP ]; then
         refresh_repo_impl "speculators"
         refresh_repo_impl "llm-compressor-testing"
         cd
-        echo "repos updated, to install use \`env_install\`"
+        echo "repos updated, to install use \`rhdev_install\`"
     }
 
-    env_install() {
+    rhdev_install() {
         cd
         . ~/rhdev/bin/activate
         cd repos
@@ -445,6 +445,7 @@ if [ $COMMANDS_SETUP ]; then
 
         echo "rhdev environment packages installed"
     }
+    alias env_install='rhdev_install'
 
     vllm_install_main() {
         cd
