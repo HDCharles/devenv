@@ -460,6 +460,14 @@ if [ $COMMANDS_SETUP ]; then
         echo "vllm environment packages installed (precompiled)"
     }
 
+    vllm_install_nightly() {
+        cd
+        . ~/vllm/bin/activate
+        cd repos
+
+        uv pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+    }
+
     vllm_install_source() {
         cd
         . ~/vllm/bin/activate
