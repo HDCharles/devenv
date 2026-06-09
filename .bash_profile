@@ -142,35 +142,60 @@ if [ $COMMANDS_SETUP ]; then
             return 1
         fi
         local selected
-        selected=$(ls -lht "$logdir"/*.log 2>/dev/null | awk '{
-            size = $5
-            file = $9
+        local now
+        now=$(date +%s)
+        selected=$(ls -lht "$logdir"/*.log 2>/dev/null | while read -r line; do
+            file=$(echo "$line" | awk '{print $NF}')
+            size=$(echo "$line" | awk '{print $5}')
+            fname=$(basename "$file")
+            # Parse YYYYMMDD-HHMMSS from filename
+            ts=${fname%%_*}
+            fepoch=$(date -d "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}" +%s 2>/dev/null)
+            if [ -n "$fepoch" ]; then
+                diff_s=$(( now - fepoch ))
+                diff_m=$(( diff_s / 60 ))
+                if [ "$diff_m" -lt 60 ]; then
+                    age="${diff_m}m"
+                elif [ "$diff_s" -lt 172800 ]; then
+                    age="$(awk "BEGIN{printf \"%.1f\", $diff_s/3600.0}")h"
+                else
+                    age="$(awk "BEGIN{printf \"%.1f\", $diff_s/86400.0}")d"
+                fi
+            else
+                age="$ts"
+            fi
+            # Display: replace timestamp with age, keep rest of filename
+            display_name="${fname#*_}"
+            echo "$size ${age} ${display_name} $fname"
+        done | awk '{
+            size = $1
+            fname = $NF
+            # display is everything between size and fname
+            display = ""
+            for (i=2; i<NF; i++) display = display (i>2?" ":"") $i
 
-            # Parse size with suffix (K, M, G)
-            num = size
-            suffix = ""
+            num = size; suffix = ""
             if (size ~ /[0-9][KMG]$/) {
                 num = substr(size, 1, length(size)-1)
                 suffix = substr(size, length(size), 1)
             }
-
-            # Convert to bytes for comparison
             bytes = num
             if (suffix == "K") bytes = num * 1024
             else if (suffix == "M") bytes = num * 1024 * 1024
             else if (suffix == "G") bytes = num * 1024 * 1024 * 1024
 
-            # Color codes: white, yellow, orange (yellow bold), red
-            if (bytes < 10240) color = "\033[0m"           # white (<10K)
-            else if (bytes < 102400) color = "\033[33m"    # yellow (<100K)
-            else if (bytes < 1048576) color = "\033[1;33m" # orange/bold yellow (<1M)
-            else color = "\033[31m"                         # red (>=1M)
-
+            if (bytes < 10240) color = "\033[0m"
+            else if (bytes < 102400) color = "\033[33m"
+            else if (bytes < 1048576) color = "\033[1;33m"
+            else color = "\033[31m"
             reset = "\033[0m"
-            printf "%s%-6s%s  %s\n", color, size, reset, file
-        }' | fzf --ansi --preview 'tail -50 $(echo {} | awk "{print \$NF}")' | awk '{print $NF}')
+            printf "%s%-6s%s  %s\t%s\n", color, size, reset, display, fname
+        }' | fzf --ansi --with-nth=1..-2 --delimiter='\t' \
+             --header='SIZE    AGE       NAME' \
+             --preview "tail -50 $logdir/"'$(echo {} | awk -F"\t" "{print \$NF}")' \
+           | awk -F'\t' '{print $NF}')
         if [ -n "$selected" ]; then
-            code "$selected"
+            code "$logdir/$selected"
         fi
     }
 
