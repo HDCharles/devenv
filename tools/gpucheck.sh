@@ -270,14 +270,14 @@ display_table_frame() {
         echo "Half-lives: 1 day / 7 days / 28 days  (at 5min polling interval)"
         echo
         echo "Server name colors (based on 7 day EMA):"
-        echo "  \033[0;90mGray\033[0m = Unreachable/0 GPUs  |  \033[0;31mRed\033[0m = %Time>=8 > 25%  |  \033[0;33mOrange\033[0m = %Time>=8 > 10%  |  \033[0;32mGreen\033[0m = Low usage"
+        echo -e "  \033[0;90mGray\033[0m = Unreachable/0 GPUs  |  \033[0;31mRed\033[0m = %Time>=8 > 25%  |  \033[0;33mOrange\033[0m = %Time>=8 > 10%  |  \033[0;32mGreen\033[0m = Low usage"
         echo
         echo "Availability colors:"
-        echo "  \033[0;32mGreen\033[0m >= 6 avail  |  \033[0;33mYellow\033[0m >= 4 avail  |  \033[0;31mRed\033[0m 1-3 avail  |  \033[0;90mGray\033[0m = 0 avail or Unreachable"
+        echo -e "  \033[0;32mGreen\033[0m >= 6 avail  |  \033[0;33mYellow\033[0m >= 4 avail  |  \033[0;31mRed\033[0m 1-3 avail  |  \033[0;90mGray\033[0m = 0 avail or Unreachable"
         echo
         echo "Individual metric colors:"
-        echo "  Avg Used: \033[0;32mGreen\033[0m <= 2, \033[0;33mYellow\033[0m > 2, \033[0;31mRed\033[0m > 4  |  Percentages: \033[0;32mGreen\033[0m <= 25%, \033[0;33mYellow\033[0m > 25%, \033[0;31mRed\033[0m > 50%"
-        echo "  Ping: \033[0;32mGreen\033[0m <= 200ms, \033[0;33mYellow\033[0m > 200ms, \033[0;31mRed\033[0m > 500ms"
+        echo -e "  Avg Used: \033[0;32mGreen\033[0m <= 2, \033[0;33mYellow\033[0m > 2, \033[0;31mRed\033[0m > 4  |  Percentages: \033[0;32mGreen\033[0m <= 25%, \033[0;33mYellow\033[0m > 25%, \033[0;31mRed\033[0m > 50%"
+        echo -e "  Ping: \033[0;32mGreen\033[0m <= 200ms, \033[0;33mYellow\033[0m > 200ms, \033[0;31mRed\033[0m > 500ms"
         echo
     fi
 }
