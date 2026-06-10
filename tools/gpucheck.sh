@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # === Configuration ===
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSH_CONFIG="$HOME/.ssh/config"
-STATE_FILE="$HOME/.gpucheck_state.json"
-LAST_SYNC_FILE="$HOME/.gpucheck_last_sync"
+STATE_FILE="$SCRIPT_DIR/.gpucheck_state.json"
+LAST_SYNC_FILE="$SCRIPT_DIR/.gpucheck_last_sync"
 INVENTORY_REPO="neuralmagic/stratus"
 INVENTORY_PATH="infra-ansible/webapp-inventory/public/data/inventory.json"
 POLL_INTERVAL=300  # seconds between checks (5 minutes)
