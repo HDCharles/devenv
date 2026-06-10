@@ -491,7 +491,7 @@ if [ $COMMANDS_SETUP ]; then
         . ~/vllm/bin/activate
 
         cd ~/repos/vllm
-        VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
+        VLLM_USE_PRECOMPILED=1 uv pip install --editable ".[dev]" --prerelease=allow
         cd ..
 
         echo "vllm environment packages installed (from source)"
