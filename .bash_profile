@@ -456,8 +456,8 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     rhdev_install() {
-        cd
         . ~/rhdev/bin/activate
+        cd
         cd repos
 
         cd llm-compressor
@@ -473,33 +473,25 @@ if [ $COMMANDS_SETUP ]; then
     alias env_install='rhdev_install'
 
     vllm_install_main() {
-        cd
         . ~/vllm/bin/activate
-        cd repos
 
-        # cd vllm
-        # VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
-        # cd ..
         uv pip install vllm --extra-index-url https://download.pytorch.org/whl/${UV_TORCH_BACKEND}
 
-        echo "vllm environment packages installed (precompiled)"
+        echo "vllm environment packages installed main (precompiled)"
     }
 
     vllm_install_nightly() {
-        cd
         . ~/vllm/bin/activate
-        cd repos
 
         uv pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+        echo "vllm environment packages installed nightly (precompiled)"
     }
 
     vllm_install_source() {
-        cd
         . ~/vllm/bin/activate
-        cd repos
 
-        cd vllm
-        uv pip install -e .[dev]
+        cd ~/repos/vllm
+        VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
         cd ..
 
         echo "vllm environment packages installed (from source)"
