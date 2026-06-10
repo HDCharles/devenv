@@ -184,23 +184,40 @@ check_host() {
     local user="$3"
     local tmpfile="$4"
 
-    output=$(ssh -o ConnectTimeout=5 \
+    local ssh_opts="-o ConnectTimeout=5 \
            -o ServerAliveInterval=5 \
            -o ServerAliveCountMax=1 \
            -o StrictHostKeyChecking=accept-new \
            -o BatchMode=yes \
            -o PasswordAuthentication=no \
-           "${user}@${hostname}" \
-           "timeout 10 canhazgpu status" < /dev/null 2>&1)
+           -o LogLevel=ERROR"
 
-    if [ $? -eq 0 ]; then
+    # Run under 'script' to give SSH a fake tty — prevents the @@@
+    # host-key-changed banner from writing directly to the real terminal.
+    raw_output=$(script -q /dev/null ssh $ssh_opts \
+           "${user}@${hostname}" \
+           "timeout 10 canhazgpu status" 2>&1)
+    local rc=$?
+    output=$(printf '%s' "$raw_output" | tr -d '\r')
+
+    if [ $rc -eq 0 ]; then
         available_count=$(echo "$output" | grep -c "AVAILABLE")
         total_count=$(echo "$output" | grep -E "^ [0-9]+ " | wc -l | tr -d ' ')
         gpus_used=$((total_count - available_count))
         echo "${host_alias}|${gpus_used}|${total_count}|${available_count}" > "$tmpfile"
     else
-        reason=$(echo "$output" | tr '\n' ' ' | sed 's/|//g' | cut -c1-100)
-        echo "${host_alias}|UNREACHABLE|${reason}" > "$tmpfile"
+        if echo "$output" | grep -qi "REMOTE HOST IDENTIFICATION HAS CHANGED\|Host key verification failed"; then
+            echo "${host_alias}|UNREACHABLE|HOST KEY CHANGED — run locally: ssh-keygen -R ${hostname}" > "$tmpfile"
+        else
+            # Check if SSH itself works (connection + auth) by running a trivial command
+            ssh $ssh_opts "${user}@${hostname}" "true" < /dev/null 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo "${host_alias}|UNREACHABLE|(connected) canhazgpu hung or failed — GPUs may be in a bad state" > "$tmpfile"
+            else
+                reason=$(echo "$output" | grep -v '^@' | tr '\n' ' ' | sed 's/|//g' | cut -c1-100)
+                echo "${host_alias}|UNREACHABLE|${reason}" > "$tmpfile"
+            fi
+        fi
     fi
 }
 

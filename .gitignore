@@ -1,2 +1,5 @@
 .secrets
 .git-template
+.gpucheck_known_hosts
+.gpucheck_last_sync
+.gpucheck_state.json
