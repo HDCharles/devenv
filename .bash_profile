@@ -491,7 +491,34 @@ if [ $COMMANDS_SETUP ]; then
         . ~/vllm/bin/activate
 
         cd ~/repos/vllm
-        VLLM_USE_PRECOMPILED=1 uv pip install --editable . --prerelease=allow
+
+        # Find the most recent origin/main commit that has precompiled wheels
+        local variant
+        variant=$(python3 -c "
+import torch, re
+v = torch.version.cuda
+major = int(v.split('.')[0])
+print({12: 'cu129', 13: 'cu130'}.get(major, 'cu129'))
+" 2>/dev/null || echo "cu130")
+
+        local wheel_commit=""
+        local sha
+        for sha in $(git log --format=%H origin/main -20); do
+            if curl -sf "https://wheels.vllm.ai/${sha}/${variant}/vllm/metadata.json" > /dev/null 2>&1; then
+                wheel_commit="$sha"
+                break
+            fi
+        done
+
+        if [ -z "$wheel_commit" ]; then
+            echo "WARNING: No precompiled wheel found in last 20 commits, building from source"
+            VLLM_USE_PRECOMPILED=0 uv pip install --editable . --prerelease=allow
+        else
+            echo "Using precompiled wheel from commit $(git log --oneline -1 "$wheel_commit")"
+            VLLM_USE_PRECOMPILED=1 VLLM_PRECOMPILED_WHEEL_COMMIT="$wheel_commit" \
+                uv pip install --editable . --prerelease=allow
+        fi
+
         cd ..
 
         echo "vllm environment packages installed (from source)"
