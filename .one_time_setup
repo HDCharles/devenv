@@ -48,7 +48,7 @@ clone_repos() {
 vllm_env_setup() {
     cd
     # Create vllm environment
-    uv venv --python 3.11 vllm
+    uv venv --python 3.12 vllm
     . ~/vllm/bin/activate
 
     uv pip install torch
