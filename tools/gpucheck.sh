@@ -6,7 +6,7 @@ SSH_CONFIG="$HOME/.ssh/config"
 STATE_FILE="$SCRIPT_DIR/.gpucheck_state.json"
 LAST_SYNC_FILE="$SCRIPT_DIR/.gpucheck_last_sync"
 INVENTORY_REPO="neuralmagic/nm-alchemy"
-INVENTORY_PATH="ansible/webapp-inventory/public/data/inventory.json"
+INVENTORY_WORKFLOW="Inventory Site"
 POLL_INTERVAL=300  # seconds between checks (5 minutes)
 # Three EMA alpha values for different time horizons
 EMA_ALPHA_FAST=0.0024   # 1 day half-life
@@ -39,11 +39,26 @@ sync_ssh_config() {
 
     echo "📡 Syncing host list from remote..."
 
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap "rm -rf '$tmpdir'" RETURN
+
+    local run_id
+    run_id=$(gh run list -R "${INVENTORY_REPO}" -w "${INVENTORY_WORKFLOW}" -s completed --json databaseId,conclusion --jq '[.[] | select(.conclusion=="success")][0].databaseId' 2>/dev/null)
+
+    if [ -z "$run_id" ]; then
+        echo "⚠️  Could not find a successful '${INVENTORY_WORKFLOW}' workflow run. Is 'gh' authenticated?"
+        return 1
+    fi
+
+    gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null
+    tar xf "$tmpdir/artifact.tar" -C "$tmpdir" data/inventory.json 2>/dev/null
+
     local raw
-    raw=$(gh api "repos/${INVENTORY_REPO}/contents/${INVENTORY_PATH}" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null)
+    raw=$(cat "$tmpdir/data/inventory.json" 2>/dev/null)
 
     if [ -z "$raw" ]; then
-        echo "⚠️  Could not fetch inventory. Is 'gh' authenticated? Run: gh auth login"
+        echo "⚠️  Could not extract inventory from workflow artifact."
         return 1
     fi
 
