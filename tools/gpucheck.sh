@@ -86,8 +86,8 @@ sync_ssh_config() {
         return 1
     fi
 
-    local existing_ips
-    existing_ips=$(awk '/^[[:space:]]+HostName[[:space:]]/ {print $2}' "$SSH_CONFIG")
+    local existing_aliases
+    existing_aliases=$(awk '/^Host[[:space:]]/ && $2 !~ /\*/ && $2 !~ /^#/ {print $2}' "$SSH_CONFIG")
 
     local new_block=""
     local added=0
@@ -111,7 +111,7 @@ for host in data.get('allHosts', []):
 
     while IFS=$'\t' read -r ip alias _rest; do
         [ -z "$ip" ] || [ -z "$alias" ] && continue
-        if ! echo "$existing_ips" | grep -qxF "$ip"; then
+        if ! echo "$existing_aliases" | grep -qxF "$alias"; then
             new_block+="Host ${alias}
   HostName ${ip}
   User ${SSH_USER}
@@ -141,6 +141,28 @@ for host in data.get('allHosts', []):
         echo "✅ Added $added new host(s) to SSH config"
     else
         echo "✅ SSH config is up to date"
+    fi
+
+    # Rename duplicate Host entries (stale IP) by appending -old
+    local dup_aliases
+    dup_aliases=$(awk '/^Host[[:space:]]/ && $2 !~ /\*/ && $2 !~ /^#/ {print $2}' "$SSH_CONFIG" | sort | uniq -d)
+    if [ -n "$dup_aliases" ]; then
+        local tmp
+        tmp=$(mktemp)
+        local renamed=0
+        while IFS= read -r dup; do
+            [ -z "$dup" ] && continue
+            local seen=0
+            awk -v alias="$dup" '
+                /^Host[[:space:]]/ && $2 == alias {
+                    count++
+                    if (count == 1) { $2 = alias "-old"; $0 = "Host " $2 }
+                }
+                { print }
+            ' "$SSH_CONFIG" > "$tmp" && mv "$tmp" "$SSH_CONFIG"
+            renamed=$((renamed + 1))
+        done <<< "$dup_aliases"
+        echo "🔄 Renamed $renamed stale duplicate host(s) with -old suffix"
     fi
 
     echo "$run_id" > "$LAST_SYNC_FILE"
@@ -198,17 +220,21 @@ update_state() {
        --argjson as "$EMA_ALPHA_SLOW" \
        --arg ts "$(date -Iseconds)" \
        '(.[$h] // {}) as $old |
+       (($old.samples) // 0) as $t |
+       ([1, (pow(2; -$t) + $af)] | min) as $eaf |
+       ([1, (pow(2; -$t) + $am)] | min) as $eam |
+       ([1, (pow(2; -$t) + $as)] | min) as $eas |
        .[$h] = {
-           ema_avg_used_fast:  ($af * $gpus + (1-$af) * (($old.ema_avg_used_fast)  // 0)),
-           ema_avg_used_med:   ($am * $gpus + (1-$am) * (($old.ema_avg_used_med)   // 0)),
-           ema_avg_used_slow:  ($as * $gpus + (1-$as) * (($old.ema_avg_used_slow)  // 0)),
-           ema_pct_8_used_fast:($af * $is_8 + (1-$af) * (($old.ema_pct_8_used_fast)// 0)),
-           ema_pct_8_used_med: ($am * $is_8 + (1-$am) * (($old.ema_pct_8_used_med) // 0)),
-           ema_pct_8_used_slow:($as * $is_8 + (1-$as) * (($old.ema_pct_8_used_slow)// 0)),
-           ema_pct_4_used_fast:($af * $is_4 + (1-$af) * (($old.ema_pct_4_used_fast)// 0)),
-           ema_pct_4_used_med: ($am * $is_4 + (1-$am) * (($old.ema_pct_4_used_med) // 0)),
-           ema_pct_4_used_slow:($as * $is_4 + (1-$as) * (($old.ema_pct_4_used_slow)// 0)),
-           samples: ((($old.samples) // 0) + 1),
+           ema_avg_used_fast:  ($eaf * $gpus + (1-$eaf) * (($old.ema_avg_used_fast)  // 0)),
+           ema_avg_used_med:   ($eam * $gpus + (1-$eam) * (($old.ema_avg_used_med)   // 0)),
+           ema_avg_used_slow:  ($eas * $gpus + (1-$eas) * (($old.ema_avg_used_slow)  // 0)),
+           ema_pct_8_used_fast:($eaf * $is_8 + (1-$eaf) * (($old.ema_pct_8_used_fast)// 0)),
+           ema_pct_8_used_med: ($eam * $is_8 + (1-$eam) * (($old.ema_pct_8_used_med) // 0)),
+           ema_pct_8_used_slow:($eas * $is_8 + (1-$eas) * (($old.ema_pct_8_used_slow)// 0)),
+           ema_pct_4_used_fast:($eaf * $is_4 + (1-$eaf) * (($old.ema_pct_4_used_fast)// 0)),
+           ema_pct_4_used_med: ($eam * $is_4 + (1-$eam) * (($old.ema_pct_4_used_med) // 0)),
+           ema_pct_4_used_slow:($eas * $is_4 + (1-$eas) * (($old.ema_pct_4_used_slow)// 0)),
+           samples: ($t + 1),
            last_gpus_used: $gpus,
            last_total_gpus: $total,
            last_seen: $ts,
@@ -422,7 +448,7 @@ display_results() {
          else rpad(red + $stxt + rst; $svl; 20) end) as $status |
 
         # Server name padded
-        (.key + (" " * ([28 - (.key|length), 0] | max))) as $sname |
+        ((.key|.[:28]) + (" " * ([28 - (.key|length), 0] | max))) as $sname |
 
         "│ " + $sc + $sname + rst +
         " │ " + $status +
