@@ -22,27 +22,8 @@ load_ssh_user() {
     fi
 }
 
-# === Sync hosts from remote (once per day) ===
+# === Sync hosts from remote (when a new inventory run is available) ===
 sync_ssh_config() {
-    local today
-    today=$(date +%Y-%m-%d)
-    if [ -f "$LAST_SYNC_FILE" ] && [ "$(cat "$LAST_SYNC_FILE")" = "$today" ]; then
-        echo "📋 Host list last synced: $today"
-        return 0
-    fi
-
-    if [ -f "$LAST_SYNC_FILE" ]; then
-        echo "📋 Host list last synced: $(cat "$LAST_SYNC_FILE")"
-    else
-        echo "📋 Host list has never been synced"
-    fi
-
-    echo "📡 Syncing host list from remote..."
-
-    local tmpdir
-    tmpdir=$(mktemp -d)
-    trap "rm -rf '$tmpdir'" RETURN
-
     local run_id
     run_id=$(gh run list -R "${INVENTORY_REPO}" -w "${INVENTORY_WORKFLOW}" -s completed --json databaseId,conclusion --jq '[.[] | select(.conclusion=="success")][0].databaseId' 2>/dev/null)
 
@@ -51,7 +32,50 @@ sync_ssh_config() {
         return 1
     fi
 
-    gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null
+    local last_synced_run=""
+    [ -f "$LAST_SYNC_FILE" ] && last_synced_run=$(cat "$LAST_SYNC_FILE")
+
+    if [ "$run_id" = "$last_synced_run" ]; then
+        echo "📋 Already synced with latest inventory run ($run_id)"
+        return 0
+    fi
+
+    if [ -n "$last_synced_run" ]; then
+        echo "📋 Last synced with run: $last_synced_run"
+    else
+        echo "📋 Host list has never been synced"
+    fi
+    echo "📡 New inventory run available ($run_id), syncing..."
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap "rm -rf '$tmpdir'" RETURN
+
+    if ! gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null; then
+        echo "⚠️  Artifact expired. Triggering a fresh workflow run..."
+        local new_run_url
+        new_run_url=$(gh workflow run "${INVENTORY_WORKFLOW}" -R "${INVENTORY_REPO}" 2>&1)
+        local new_run_id
+        new_run_id=$(echo "$new_run_url" | grep -o '[0-9]*$')
+
+        if [ -z "$new_run_id" ]; then
+            echo "⚠️  Could not trigger workflow. Check gh auth."
+            return 1
+        fi
+
+        echo "⏳ Waiting for run ${new_run_id} to complete..."
+        if ! gh run watch "$new_run_id" -R "${INVENTORY_REPO}" --exit-status >/dev/null 2>&1; then
+            echo "⚠️  Workflow run failed."
+            return 1
+        fi
+
+        run_id="$new_run_id"
+        if ! gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null; then
+            echo "⚠️  Could not download artifact from fresh run."
+            return 1
+        fi
+    fi
+
     tar xf "$tmpdir/artifact.tar" -C "$tmpdir" data/inventory.json 2>/dev/null
 
     local raw
@@ -119,7 +143,7 @@ for host in data.get('allHosts', []):
         echo "✅ SSH config is up to date"
     fi
 
-    echo "$today" > "$LAST_SYNC_FILE"
+    echo "$run_id" > "$LAST_SYNC_FILE"
 }
 
 # === Parse SSH config ===
@@ -303,6 +327,7 @@ display_results() {
         return
     fi
 
+    stty sane 2>/dev/null
     clear
     if [ "$is_startup" -eq 1 ]; then
         echo "GPU Monitor — Displaying saved state from $(date '+%Y-%m-%d %H:%M:%S')"
