@@ -443,7 +443,7 @@ if [ $SETUP_CHANGED -eq 0 ] && command -v code &> /dev/null; then
         "ms-python.python"
         "ms-python.vscode-pylance"
         "ms-python.vscode-python-envs"
-        "zhoukz.safetensors"
+        "meijiahao.vscode-h5-viewer"
     )
     # Get list of installed extensions once — skip entirely if VS Code server is unreachable
     if ! INSTALLED_EXTENSIONS=$(code --list-extensions 2>/dev/null); then
