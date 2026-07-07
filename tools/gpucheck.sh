@@ -2,194 +2,14 @@
 
 # === Configuration ===
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SSH_CONFIG="$HOME/.ssh/config"
 STATE_FILE="$SCRIPT_DIR/.gpucheck_state.json"
-LAST_SYNC_FILE="$SCRIPT_DIR/.gpucheck_last_sync"
-INVENTORY_REPO="neuralmagic/nm-alchemy"
-INVENTORY_WORKFLOW="Inventory Site"
 POLL_INTERVAL=300  # seconds between checks (5 minutes)
 # Three EMA alpha values for different time horizons
 EMA_ALPHA_FAST=0.0024   # 1 day half-life
 EMA_ALPHA_MED=0.00034   # 7 day half-life (used for coloring)
 EMA_ALPHA_SLOW=0.000086 # 28 day half-life
 
-# === Get SSH username from gh auth ===
-load_ssh_user() {
-    SSH_USER=$(gh api user --jq '.login' 2>/dev/null)
-    if [ -z "$SSH_USER" ]; then
-        echo "⚠️  Could not get username. Is 'gh' authenticated? Run: gh auth login"
-        exit 1
-    fi
-}
-
-# === Sync hosts from remote (when a new inventory run is available) ===
-sync_ssh_config() {
-    local run_id
-    run_id=$(gh run list -R "${INVENTORY_REPO}" -w "${INVENTORY_WORKFLOW}" -s completed --json databaseId,conclusion --jq '[.[] | select(.conclusion=="success")][0].databaseId' 2>/dev/null)
-
-    if [ -z "$run_id" ]; then
-        echo "⚠️  Could not find a successful '${INVENTORY_WORKFLOW}' workflow run. Is 'gh' authenticated?"
-        return 1
-    fi
-
-    local last_synced_run=""
-    [ -f "$LAST_SYNC_FILE" ] && last_synced_run=$(cat "$LAST_SYNC_FILE")
-
-    if [ "$run_id" = "$last_synced_run" ]; then
-        echo "📋 Already synced with latest inventory run ($run_id)"
-        return 0
-    fi
-
-    if [ -n "$last_synced_run" ]; then
-        echo "📋 Last synced with run: $last_synced_run"
-    else
-        echo "📋 Host list has never been synced"
-    fi
-    echo "📡 New inventory run available ($run_id), syncing..."
-
-    local tmpdir
-    tmpdir=$(mktemp -d)
-    trap "rm -rf '$tmpdir'" RETURN
-
-    if ! gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null; then
-        echo "⚠️  Artifact expired. Triggering a fresh workflow run..."
-        local new_run_url
-        new_run_url=$(gh workflow run "${INVENTORY_WORKFLOW}" -R "${INVENTORY_REPO}" 2>&1)
-        local new_run_id
-        new_run_id=$(echo "$new_run_url" | grep -o '[0-9]*$')
-
-        if [ -z "$new_run_id" ]; then
-            echo "⚠️  Could not trigger workflow. Check gh auth."
-            return 1
-        fi
-
-        echo "⏳ Waiting for run ${new_run_id} to complete..."
-        if ! gh run watch "$new_run_id" -R "${INVENTORY_REPO}" --exit-status >/dev/null 2>&1; then
-            echo "⚠️  Workflow run failed."
-            return 1
-        fi
-
-        run_id="$new_run_id"
-        if ! gh run download "$run_id" -R "${INVENTORY_REPO}" -n github-pages -D "$tmpdir" 2>/dev/null; then
-            echo "⚠️  Could not download artifact from fresh run."
-            return 1
-        fi
-    fi
-
-    tar xf "$tmpdir/artifact.tar" -C "$tmpdir" data/inventory.json 2>/dev/null
-
-    local raw
-    raw=$(cat "$tmpdir/data/inventory.json" 2>/dev/null)
-
-    if [ -z "$raw" ]; then
-        echo "⚠️  Could not extract inventory from workflow artifact."
-        return 1
-    fi
-
-    local existing_aliases
-    existing_aliases=$(awk '/^Host[[:space:]]/ && $2 !~ /\*/ && $2 !~ /^#/ {print $2}' "$SSH_CONFIG")
-
-    local new_block=""
-    local added=0
-
-    local parsed
-    parsed=$(python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for host in data.get('allHosts', []):
-    addr = host.get('address', '')
-    name = host.get('name', '')
-    access = host.get('meta', {}).get('developer_access', False)
-    if access and addr and name and not any(c.isalpha() for c in addr):
-        print(f'{addr}\t{name}')
-" <<< "$raw" 2>/dev/null)
-
-    if [ -z "$parsed" ]; then
-        echo "⚠️  Could not parse any hosts from inventory. Will retry next run."
-        return 1
-    fi
-
-    while IFS=$'\t' read -r ip alias _rest; do
-        [ -z "$ip" ] || [ -z "$alias" ] && continue
-        if ! echo "$existing_aliases" | grep -qxF "$alias"; then
-            new_block+="Host ${alias}
-  HostName ${ip}
-  User ${SSH_USER}
-
-"
-            added=$((added + 1))
-        fi
-    done <<< "$parsed"
-
-    if [ "$added" -gt 0 ]; then
-        if grep -q "^Host \*\.redhat\.com" "$SSH_CONFIG"; then
-            local tmp block_file
-            tmp=$(mktemp)
-            export BLOCK_FILE=$(mktemp)
-            printf "%s" "$new_block" > "$BLOCK_FILE"
-            awk '
-                /^Host \*\.redhat\.com/ {
-                    while ((getline line < ENVIRON["BLOCK_FILE"]) > 0) print line
-                }
-                { print }
-            ' "$SSH_CONFIG" > "$tmp" && mv "$tmp" "$SSH_CONFIG"
-            rm -f "$BLOCK_FILE"
-            unset BLOCK_FILE
-        else
-            printf "\n%s" "$new_block" >> "$SSH_CONFIG"
-        fi
-        echo "✅ Added $added new host(s) to SSH config"
-    else
-        echo "✅ SSH config is up to date"
-    fi
-
-    # Rename duplicate Host entries (stale IP) by appending -old
-    local dup_aliases
-    dup_aliases=$(awk '/^Host[[:space:]]/ && $2 !~ /\*/ && $2 !~ /^#/ {print $2}' "$SSH_CONFIG" | sort | uniq -d)
-    if [ -n "$dup_aliases" ]; then
-        local tmp
-        tmp=$(mktemp)
-        local renamed=0
-        while IFS= read -r dup; do
-            [ -z "$dup" ] && continue
-            local seen=0
-            awk -v alias="$dup" '
-                /^Host[[:space:]]/ && $2 == alias {
-                    count++
-                    if (count == 1) { $2 = alias "-old"; $0 = "Host " $2 }
-                }
-                { print }
-            ' "$SSH_CONFIG" > "$tmp" && mv "$tmp" "$SSH_CONFIG"
-            renamed=$((renamed + 1))
-        done <<< "$dup_aliases"
-        echo "🔄 Renamed $renamed stale duplicate host(s) with -old suffix"
-    fi
-
-    echo "$run_id" > "$LAST_SYNC_FILE"
-}
-
-# === Parse SSH config ===
-get_ssh_hosts() {
-    awk '
-        /^Host[[:space:]]/ {
-            if ($2 !~ /\*/ && $2 !~ /^#/) {
-                host = $2
-            } else {
-                host = ""
-            }
-        }
-        /^[[:space:]]+HostName[[:space:]]/ {
-            if (host != "") hostname = $2
-        }
-        /^[[:space:]]+User[[:space:]]/ {
-            if (host != "" && hostname != "") {
-                print host ":" hostname ":" $2
-                host = ""
-                hostname = ""
-            }
-        }
-    ' "$SSH_CONFIG"
-}
+source "$SCRIPT_DIR/ssh_utils.sh"
 
 # === Load or initialize state ===
 load_state() {
@@ -482,20 +302,22 @@ display_results() {
 
 # === Main loop ===
 main() {
-    load_ssh_user
+    ssh_load_user
 
-    sync_ssh_config
+    SYNC_LOG=$(ssh_sync_config "$STATE_FILE" 2>&1)
 
     load_state
 
     # Display saved state immediately if it exists
     display_results 1
+    echo "$SYNC_LOG"
+    echo
 
     trap 'echo; echo "Stopped. State preserved in $STATE_FILE"; exit 0' INT TERM
 
     while true; do
         echo "🔍 Checking GPUs..."
-        HOSTS_LIST=$(get_ssh_hosts)
+        HOSTS_LIST=$(ssh_get_hosts)
         WORK_TMPDIR=$(mktemp -d)
 
         # Count total hosts for progress
@@ -552,4 +374,7 @@ main() {
     done
 }
 
+if [ "${1:-}" = "--sync" ]; then
+    rm -f "$LAST_SYNC_FILE"
+fi
 main
