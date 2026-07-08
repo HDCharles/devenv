@@ -72,6 +72,7 @@ if [ $ALIASES_SETUP ]; then
     alias seebash="code $DEV_ENV_DIR/.bash_profile"
     alias godev="cd $DEV_ENV_DIR"
     alias setwin="setwindow"
+    alias claudefoom="claude --dangerously-skip-permissions"
 fi
 ############ COMMANDS ############
 # MARK: COMMANDS

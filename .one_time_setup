@@ -278,6 +278,7 @@ else
         "/mnt/nfs-preprod-1/engine"
         "/mnt/nfs-preprod-2/engine"
         "/data/engine"
+        "/data"
     )
 
     # First pass: try to find a directory that exists AND supports chmod
