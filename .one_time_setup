@@ -56,7 +56,9 @@ vllm_env_setup() {
     uv pip install transformers
     uv pip install lm_eval
     uv pip install qwen_vl_utils
+    uv pip install tblib
     uv pip install ray
+    uv pip install pytest
     vllm_install_main
 
     echo "Created vllm environment"
