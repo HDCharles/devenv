@@ -399,6 +399,9 @@ check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 ### OTS TMUX CONFIG ###
 check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
+### OTS CLAUDE.MD ###
+check_and_symlink "$HOME/.claude" "CLAUDE.md" "$DEV_ENV_DIR/CLAUDE.md"
+
 ### OTS REPOS ###
 MISSING_REPOS=()
 [ ! -d "$HOME/repos/llm-compressor" ] && MISSING_REPOS+=("llm-compressor")
