@@ -399,9 +399,6 @@ check_and_symlink "$REPOS/.vscode" "launch.json" "$TEMPLATE_LAUNCH"
 ### OTS TMUX CONFIG ###
 check_and_symlink "$HOME" ".tmux.conf" "$DEV_ENV_DIR/other_files/.tmux.conf"
 
-### OTS CLAUDE.MD ###
-check_and_symlink "$HOME/.claude" "CLAUDE.md" "$DEV_ENV_DIR/CLAUDE.md"
-
 ### OTS REPOS ###
 MISSING_REPOS=()
 [ ! -d "$HOME/repos/llm-compressor" ] && MISSING_REPOS+=("llm-compressor")
@@ -473,19 +470,22 @@ if [ ! -e "$HOME/.fzf" ]; then
     fzf_setup
 fi
 
-### OTS CLAUDE CODE CREDS ###
-if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
-    NEEDS_MANUAL_SETUP=1
+if ! command -v claude &> /dev/null; then
+    echo "Claude Code not found. Running claude_setup..."
+    claude_setup
 fi
+
+### OTS CLAUDE.MD ###
+check_and_symlink "$HOME/.claude" "CLAUDE.md" "$DEV_ENV_DIR/CLAUDE.md"
 
 ### OTS GH AUTH ###
 if [ $GH_AUTHENTICATED -eq 0 ]; then
     NEEDS_MANUAL_SETUP=1
 fi
 
-if ! command -v claude &> /dev/null; then
-    echo "Claude Code not found. Running claude_setup..."
-    claude_setup
+### OTS CLAUDE CODE CREDS ###
+if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
+    NEEDS_MANUAL_SETUP=1
 fi
 
 ### MANUAL ACTIONS SUMMARY ###
