@@ -59,6 +59,7 @@ vllm_env_setup() {
     uv pip install tblib
     uv pip install ray
     uv pip install pytest
+    uv pip install matplotlib
     vllm_install_main
 
     echo "Created vllm environment"
@@ -79,6 +80,7 @@ rhdev_env_setup() {
     uv pip install tblib
     uv pip install qwen_vl_utils
     uv pip install ray
+    uv pip install matplotlib
     rhdev_install
     
     echo "Created rhdev environment"

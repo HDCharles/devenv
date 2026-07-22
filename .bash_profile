@@ -73,6 +73,7 @@ if [ $ALIASES_SETUP ]; then
     alias godev="cd $DEV_ENV_DIR"
     alias setwin="setwindow"
     alias claudefoom="claude --dangerously-skip-permissions"
+    alias usegpu="CUDA_VISIBLE_DEVICES"
 fi
 ############ COMMANDS ############
 # MARK: COMMANDS
