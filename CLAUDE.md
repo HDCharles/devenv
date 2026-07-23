@@ -16,6 +16,12 @@ git rebase main
 ```
 This avoids checking out main (which would disrupt in-progress work) while keeping the local main ref current.
 
+## Virtual Environments
+
+There are 2 uv venvs in `$HOME`:
+- **rhdev** — use for all quantization work
+- **vllm** — use for all evaluation work
+
 ## Debugging
 
 When debugging and there is uncertainty about why something is happening, run a small targeted experiment to gain certainty rather than reasoning from assumptions. Prefer adding a print/log statement or writing a minimal repro script over speculating about root causes.
