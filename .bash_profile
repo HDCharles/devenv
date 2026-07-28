@@ -521,6 +521,14 @@ print({12: 'cu129', 13: 'cu130'}.get(major, 'cu129'))
                 uv pip install --editable . --prerelease=allow
         fi
 
+        # Install flashinfer packages that setup.py skips (not on PyPI)
+        local fi_pkgs
+        fi_pkgs=$(grep -E '^flashinfer-' requirements/cuda.txt | tr '\n' ' ')
+        if [ -n "$fi_pkgs" ]; then
+            echo "Installing flashinfer packages: $fi_pkgs"
+            uv pip install $fi_pkgs --extra-index-url https://flashinfer.ai/whl/
+        fi
+
         cd ..
 
         echo "vllm environment packages installed (from source)"
