@@ -286,17 +286,18 @@ else
     )
 
     # First pass: try to find a directory that exists AND supports chmod
+    # Also require write permission (or that our user subdir already exists)
     for dir in "${CANDIDATE_DIRS[@]}"; do
-        if [ -d "$dir" ] && test_chmod_support "$dir"; then
+        if [ -d "$dir" ] && ([ -d "$dir/$USER" ] || [ -w "$dir" ]) && test_chmod_support "$dir"; then
             NETWORK_SHARE_BASE="$dir"
             break
         fi
     done
 
-    # Second pass: if no chmod-capable dir found, accept any existing dir
+    # Second pass: if no chmod-capable dir found, accept any existing writable dir
     if [ -z "$NETWORK_SHARE_BASE" ]; then
         for dir in "${CANDIDATE_DIRS[@]}"; do
-            if [ -d "$dir" ]; then
+            if [ -d "$dir" ] && ([ -d "$dir/$USER" ] || [ -w "$dir" ]); then
                 NETWORK_SHARE_BASE="$dir"
                 echo "Warning: Selected network share at $dir does not support chmod"
                 break

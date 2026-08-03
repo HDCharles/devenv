@@ -24,7 +24,6 @@ from llmcompressor.modifiers.transform.awq import AWQModifier
 from llmcompressor.modifiers.transform.awq.dynamic_mappings import (
     get_layer_mappings_from_model,
 )
-from llmcompressor.modifiers.transform.imatrix import IMatrixGatherer
 from llmcompressor.modifiers.transform.smoothquant import SmoothQuantModifier
 
 MODEL_CONFIGS = {
@@ -135,7 +134,6 @@ def build_recipe(technique, scheme, ignore, is_moe, model=None):
         scheme_obj = preset_name_to_scheme(scheme, ["Linear"])
         scheme_obj.weights.observer = "imatrix_mse"
         return [
-            IMatrixGatherer(ignore=ignore),
             QuantizationModifier(
                 config_groups={"group_0": scheme_obj},
                 ignore=ignore,

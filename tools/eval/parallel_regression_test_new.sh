@@ -25,20 +25,21 @@ QUANTIZE_VENV="/home/HDCharles/rhdev/bin/activate"
 
 # Models to test
 declare -A MODELS=(
-    ["Qwen/Qwen2.5-3B-Instruct"]="Qwen2.5-3B-Instruct,2048,1"
+    # ["Qwen/Qwen2.5-3B-Instruct"]="Qwen2.5-3B-Instruct,2048,1"
     # ["Qwen/Qwen1.5-MoE-A2.7B-Chat"]="Qwen1.5-MoE-A2.7B-Chat,2048,1"
     ["meta-llama/Meta-Llama-3-8B-Instruct"]="Meta-Llama-3-8B-Instruct,2048,1"
-    ["google/gemma-4-12B-it"]="gemma-4-12B-it,4096,1"
-    ["Qwen/Qwen3.5-27B"]="Qwen3.5-27B,2048,1"
-    ["Qwen/Qwen3-30B-A3B"]="Qwen3-30B-A3B,2048,2"
-    ["meta-llama/Llama-4-Scout-17B-16E-Instruct"]="Llama-4-Scout-17B-16E-Instruct,2048,2"
+    # ["google/gemma-4-12B-it"]="gemma-4-12B-it,4096,1"
+    # ["Qwen/Qwen3.5-27B"]="Qwen3.5-27B,2048,1"
+    # ["Qwen/Qwen3-30B-A3B"]="Qwen3-30B-A3B,2048,2"
+    # ["meta-llama/Llama-4-Scout-17B-16E-Instruct"]="Llama-4-Scout-17B-16E-Instruct,2048,2"
 )
 
+TECHNIQUES=("gptq")
 # TECHNIQUES=("awq_rtn" "awq_smooth" "awq_no_up_down" "rtn" "rtn_mse" "gptq" "imatrix")
-TECHNIQUES=("awq_rtn" "awq_smooth" "awq_no_up_down")
+# TECHNIQUES=("awq_rtn" "awq_smooth" "awq_no_up_down")
 # BRANCHES=("main" "mapping_reordering")
-BRANCHES=("mapping_reordering")
-SCHEMES=("NVFP4A16" "W4A16")
+BRANCHES=("main" "gptq-triton-cutoff")
+SCHEMES=("W4A16", NVFP4A16, FP8)
 
 EVAL_TASKS=("wikitext" "mmlu" "gsm8k_platinum")
 EVAL_LM_TASKS=("wikitext" "mmlu" "gsm8k_platinum")
