@@ -36,7 +36,7 @@ for model_dir in sorted(eval_dir.iterdir()):
     # Find scheme (known schemes are uppercase like NVFP4A16, FP8)
     scheme_idx = None
     for i, p in enumerate(parts):
-        if p in ("NVFP4A16", "FP8", "W4A16", "W8A8", "W4A4"):
+        if p in ("NVFP4A16", "FP8", "FP8_BLOCK", "W4A16", "W4A16_ASYM", "W8A8", "W4A4"):
             scheme_idx = i
             break
     if scheme_idx is None:
