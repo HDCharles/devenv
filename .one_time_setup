@@ -69,7 +69,7 @@ vllm_env_setup() {
 rhdev_env_setup() {
     cd
     # Create rhdev environment
-    uv venv --python 3.11 rhdev
+    uv venv --python 3.12 rhdev
     . ~/rhdev/bin/activate
 
     uv pip install transformers
