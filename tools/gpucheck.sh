@@ -39,6 +39,7 @@ update_state() {
        --argjson am "$EMA_ALPHA_MED" \
        --argjson as "$EMA_ALPHA_SLOW" \
        --arg ts "$(date -Iseconds)" \
+       --argjson epoch "$(date +%s)" \
        '(.[$h] // {}) as $old |
        (($old.samples) // 0) as $t |
        ([1, (pow(2; -$t) + $af)] | min) as $eaf |
@@ -55,9 +56,13 @@ update_state() {
            ema_pct_4_used_med: ($eam * $is_4 + (1-$eam) * (($old.ema_pct_4_used_med) // 0)),
            ema_pct_4_used_slow:($eas * $is_4 + (1-$eas) * (($old.ema_pct_4_used_slow)// 0)),
            samples: ($t + 1),
+           total_polls: (([($old.total_polls // 0), $t] | max) + 1),
+           first_seen: (($old.first_seen) // $ts),
+           first_seen_epoch: (($old.first_seen_epoch) // $epoch),
            last_gpus_used: $gpus,
            last_total_gpus: $total,
            last_seen: $ts,
+           last_reachable_epoch: $epoch,
            unreachable: false,
            unreachable_reason: null
        }' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
@@ -128,8 +133,9 @@ process_single_result() {
         local tmp=$(mktemp)
         jq --arg h "$host_alias" \
            --arg ts "$(date -Iseconds)" \
+           --argjson epoch "$(date +%s)" \
            --arg reason "$reason" \
-           '.[$h].last_seen = $ts | .[$h].unreachable = true | .[$h].unreachable_reason = $reason' \
+           '.[$h].last_seen = $ts | .[$h].unreachable = true | .[$h].unreachable_reason = $reason | .[$h].total_polls = ([(.[$h].total_polls // 0), (.[$h].samples // 0)] | max) + 1 | .[$h].first_seen = ((.[$h].first_seen) // $ts) | .[$h].first_seen_epoch = ((.[$h].first_seen_epoch) // $epoch)' \
            "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
     fi
 }
@@ -140,12 +146,12 @@ display_table_frame() {
     local col2_title="$2"
 
     if [ "$mode" = "header" ]; then
-        printf "┌──────────────────────────────┬──────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┐\n"
-        printf "│ %-28s │ %-20s │ %-22s │ %-22s │ %-22s │\n" \
-            "Server" "$col2_title" "Avg Used (1d/7d/28d)" "% Time >=8" "% Time >=4"
-        printf "├──────────────────────────────┼──────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┤\n"
+        printf "┌──────────────────────────────┬──────────┬──────────┬──────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┐\n"
+        printf "│ %-28s │ %-8s │ %-8s │ %-20s │ %-22s │ %-22s │ %-22s │\n" \
+            "Server" "Age" "Up%" "$col2_title" "Avg Used (1d/7d/28d)" "% Time >=8" "% Time >=4"
+        printf "├──────────────────────────────┼──────────┼──────────┼──────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┤\n"
     else
-        printf "└──────────────────────────────┴──────────────────────┴────────────────────────┴────────────────────────┴────────────────────────┘\n"
+        printf "└──────────────────────────────┴──────────┴──────────┴──────────────────────┴────────────────────────┴────────────────────────┴────────────────────────┘\n"
         echo
         echo "Half-lives: 1 day / 7 days / 28 days  (at 5min polling interval)"
         echo
@@ -157,6 +163,8 @@ display_table_frame() {
         echo
         echo "Individual metric colors:"
         echo "  Avg Used: \033[0;32mGreen\033[0m <= 2, \033[0;33mYellow\033[0m > 2, \033[0;31mRed\033[0m > 4  |  Percentages: \033[0;32mGreen\033[0m <= 25%, \033[0;33mYellow\033[0m > 25%, \033[0;31mRed\033[0m > 50%"
+        echo
+        echo "Age = time since first seen  |  Up% colors: \033[0;32mGreen\033[0m >= 95%, \033[0;33mYellow\033[0m >= 80%, \033[0;31mRed\033[0m < 80%, \033[0;90mGray\033[0m = no data"
         echo
     fi
 }
@@ -196,6 +204,13 @@ display_results() {
             if val > rt then red + fmt + rst
             elif val > yt then ylw + fmt + rst
             else grn + fmt + rst end;
+
+        def fmt_elapsed(days):
+            if days < 1 then "<1d"
+            elif days < 60 then (days | tostring) + "d"
+            elif days < 365 then ((days / 30 | floor | tostring) + "mo")
+            else ((days / 365 | floor | tostring) + "y " + ((days % 365 / 30 | floor | tostring)) + "mo")
+            end;
 
         def rpad(str; vlen; w):
             if vlen < w then str + (" " * (w - vlen)) else str end;
@@ -247,6 +262,29 @@ display_results() {
         (cnum($p4fv;25;50;$p4f) + "/" + cnum($p4mv;25;50;$p4m) + "/" + cnum($p4sv;25;50;$p4s) + "%") as $p4_col |
         (($p4f|length) + 1 + ($p4m|length) + 1 + ($p4s|length) + 1) as $p4_vl |
 
+        # Age column
+        ((.first_seen_epoch // null)) as $fse |
+        (if $fse == null then "—"
+         else ((now - $fse) / 86400 | floor) | fmt_elapsed(.)
+         end) as $age_str |
+        ($age_str | length) as $age_vl |
+        (if $fse == null then rpad(gry + $age_str + rst; $age_vl; 8)
+         else rpad($age_str; $age_vl; 8)
+         end) as $age_col |
+
+        # Uptime column
+        ((.total_polls // 0)) as $tp |
+        (if $tp > 0 then ((.samples // 0) / $tp * 100) else -1 end) as $upv |
+        (if $upv < 0 then "—"
+         else ($upv * 10 | floor | . / 10 | tostring | if test("\\.") then . else . + ".0" end) + "%"
+         end) as $up_str |
+        ($up_str | length) as $up_vl |
+        (if $upv < 0 then rpad(gry + $up_str + rst; $up_vl; 8)
+         elif $upv >= 95 then rpad(grn + $up_str + rst; $up_vl; 8)
+         elif $upv >= 80 then rpad(ylw + $up_str + rst; $up_vl; 8)
+         else rpad(red + $up_str + rst; $up_vl; 8)
+         end) as $up_col |
+
         # Server name color (based on 7d EMA)
         ((.last_total_gpus // 0) - (.last_gpus_used // 0)) as $avail |
         (if ._unreach or $avail == 0 then gry
@@ -261,7 +299,12 @@ display_results() {
         (($av|tostring) + "/" + ($tot|tostring) + " avail (" + ($used|tostring) + " used)") as $stxt |
         (($av|tostring|length) + 1 + ($tot|tostring|length) + 8 + ($used|tostring|length) + 6) as $svl |
 
-        (if ._unreach then rpad(gry + "UNREACHABLE" + rst; 11; 20)
+        ((.last_reachable_epoch // null)) as $lre |
+        (if $lre != null then ((now - $lre) / 86400 | floor) | fmt_elapsed(.) else null end) as $down_str |
+
+        (if ._unreach then
+           (if $down_str != null then "DOWN " + $down_str else "UNREACHABLE" end) as $utxt |
+           rpad(gry + $utxt + rst; ($utxt|length); 20)
          elif $av == 0 then rpad(gry + $stxt + rst; $svl; 20)
          elif $av >= 6 then rpad(grn + $stxt + rst; $svl; 20)
          elif $av >= 4 then rpad(ylw + $stxt + rst; $svl; 20)
@@ -271,6 +314,8 @@ display_results() {
         ((.key|.[:28]) + (" " * ([28 - (.key|length), 0] | max))) as $sname |
 
         "│ " + $sc + $sname + rst +
+        " │ " + $age_col +
+        " │ " + $up_col +
         " │ " + $status +
         " │ " + rpad($avg_col; $avg_vl; 22) +
         " │ " + rpad($p8_col; $p8_vl; 22) +
