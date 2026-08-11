@@ -448,12 +448,12 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     repo_refresh(){
-        refresh_repo_impl "llm-compressor"
-        refresh_repo_impl "vllm"
-        refresh_repo_impl "compressed-tensors"
-        refresh_repo_impl "speculators"
-        refresh_repo_impl "llm-compressor-testing"
-        cd
+        local pids=() repos=("llm-compressor" "vllm" "compressed-tensors" "speculators" "llm-compressor-testing")
+        for repo in "${repos[@]}"; do
+            ( git -C "$HOME/repos/$repo" checkout main && git -C "$HOME/repos/$repo" pull && echo "updated repo: $repo" || echo "failed to update repo: $repo, please resolve manually" ) &
+            pids+=($!)
+        done
+        for pid in "${pids[@]}"; do wait "$pid"; done
         echo "repos updated, to install use \`rhdev_install\`"
     }
 
