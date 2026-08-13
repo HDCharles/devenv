@@ -130,10 +130,14 @@ if [ $COMMANDS_SETUP ]; then
             logfile="${logdir}/${timestamp}_${cmd_part}.log"
         fi
         echo "Logging to: $logfile"
+        local start_sec=$SECONDS
         {
             echo "Command: $*"
             "$@"
         } 2>&1 | tee "$logfile"
+        local elapsed=$(( SECONDS - start_sec ))
+        local hrs=$(( elapsed / 3600 )) mins=$(( (elapsed % 3600) / 60 )) secs=$(( elapsed % 60 ))
+        printf 'Elapsed: %02d:%02d:%02d\n' "$hrs" "$mins" "$secs" | tee -a "$logfile"
         echo "Log saved to: $logfile"
     }
 
