@@ -25,11 +25,11 @@ QUANTIZE_VENV="/home/HDCharles/rhdev/bin/activate"
 
 # Models to test
 declare -A MODELS=(
-    # ["Qwen/Qwen2.5-3B-Instruct"]="Qwen2.5-3B-Instruct,2048,1"
+    ["Qwen/Qwen2.5-3B-Instruct"]="Qwen2.5-3B-Instruct,2048,1"
     # ["Qwen/Qwen1.5-MoE-A2.7B-Chat"]="Qwen1.5-MoE-A2.7B-Chat,2048,1"
     ["meta-llama/Meta-Llama-3-8B-Instruct"]="Meta-Llama-3-8B-Instruct,2048,1"
     ["google/gemma-4-12B-it"]="gemma-4-12B-it,4096,1"
-    ["Qwen/Qwen3.5-27B"]="Qwen3.5-27B,2048,1"
+    # ["Qwen/Qwen3.5-27B"]="Qwen3.5-27B,2048,1"
     ["Qwen/Qwen3-30B-A3B"]="Qwen3-30B-A3B,2048,2"
     # ["meta-llama/Llama-4-Scout-17B-16E-Instruct"]="Llama-4-Scout-17B-16E-Instruct,2048,2"
 )
@@ -136,6 +136,9 @@ for model_key in "${!MODELS[@]}"; do
         if [ "$tp_size" -gt 1 ]; then
             eval_set_model_args tensor_parallel_size "$tp_size"
         fi
+        if [[ "$model_key" == *"Qwen3.5"* ]]; then
+            eval_set_model_args max_num_seqs 256
+        fi
 
         eval_reset_lmeval_config
         eval_set_lmeval_config --model vllm
@@ -217,6 +220,9 @@ while true; do
         eval_set_model_args gpu_memory_utilization 0.9
         if [ "$tp_size" -gt 1 ]; then
             eval_set_model_args tensor_parallel_size "$tp_size"
+        fi
+        if [[ "$model_key" == *"Qwen3.5"* ]]; then
+            eval_set_model_args max_num_seqs 256
         fi
 
         eval_reset_lmeval_config

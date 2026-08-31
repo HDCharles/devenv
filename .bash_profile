@@ -56,8 +56,8 @@ fi
 # MARK: VARS
 if [ $VARS_SETUP ]; then
     export CLAUDE_CODE_USE_VERTEX=1
-    export CLOUD_ML_REGION=us-east5
-    export ANTHROPIC_VERTEX_PROJECT_ID=itpc-gcp-ai-eng-claude
+    export CLOUD_ML_REGION=global
+    export ANTHROPIC_VERTEX_PROJECT_ID=itpc-ca-1b729a26a4
     export PATH=$PATH:$HOME/.npm-global/bin
     # Detect CUDA version from nvcc, fallback to cu129 if not available
     export UV_TORCH_BACKEND="cu$(nvcc --version 2>/dev/null | sed -n 's/.*release \([0-9]*\.[0-9]*\).*/\1/p' | tr -d '.' || echo '129')"
