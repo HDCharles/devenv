@@ -459,6 +459,12 @@ if ! command -v claude &> /dev/null; then
     claude_setup
 fi
 
+### OTS CODEX ###
+if ! command -v codex &> /dev/null; then
+    echo "Codex CLI not found. Installing @openai/codex..."
+    npm install -g @openai/codex
+fi
+
 ### OTS CLAUDE.MD ###
 check_and_symlink "$HOME/.claude" "CLAUDE.md" "$DEV_ENV_DIR/CLAUDE.md"
 
