@@ -462,6 +462,8 @@ fi
 ### OTS CODEX ###
 if ! command -v codex &> /dev/null; then
     echo "Codex CLI not found. Installing @openai/codex..."
+    mkdir -p ~/.npm-global
+    npm config set prefix '~/.npm-global'
     npm install -g @openai/codex
 fi
 
