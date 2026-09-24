@@ -205,6 +205,100 @@ if [ $COMMANDS_SETUP ]; then
         fi
     }
 
+    loop_to_codex() {
+        local interval="300s"
+        local message="check status and fix any problems"
+        local OPTIND=1 OPTARG opt sessions session_name panes pane_id pane_command pane_tty interval_value candidate_pane
+        local -a codex_panes
+
+        while getopts ":t:m:" opt; do
+            case "$opt" in
+                t) interval="$OPTARG" ;;
+                m) message="$OPTARG" ;;
+                \?)
+                    echo "Usage: loop_to_codex [-t interval] [-m message]" >&2
+                    return 2
+                    ;;
+                :)
+                    echo "Error: option -$OPTARG requires a value" >&2
+                    return 2
+                    ;;
+            esac
+        done
+        shift $((OPTIND - 1))
+
+        if [ "$#" -ne 0 ]; then
+            echo "Usage: loop_to_codex [-t interval] [-m message]" >&2
+            return 2
+        fi
+
+        if [[ ! "$interval" =~ ^[0-9]+[smhd]?$ ]]; then
+            echo "Error: interval must be a positive integer with optional s, m, h, or d suffix (for example, 300s or 5m)" >&2
+            return 2
+        fi
+        interval_value="${interval%[smhd]}"
+        if [[ ! "$interval_value" =~ [1-9] ]]; then
+            echo "Error: interval must be greater than zero" >&2
+            return 2
+        fi
+
+        if ! command -v tmux >/dev/null 2>&1; then
+            echo "Error: tmux is not installed or not on PATH" >&2
+            return 127
+        fi
+
+        echo "Sending to the only Codex pane immediately, then every $interval. Press Ctrl-C to stop."
+        while true; do
+            sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null) || sessions=""
+            if [ -z "$sessions" ]; then
+                echo "Error: no tmux session found" >&2
+                return 1
+            fi
+            if [[ "$sessions" == *$'\n'* ]]; then
+                printf 'Error: multiple tmux sessions found:\n%s\n' "$sessions" >&2
+                return 1
+            fi
+
+            session_name="$sessions"
+            panes=$(tmux list-panes -s -t "$session_name" -F '#{pane_id} #{pane_current_command} #{pane_tty}' 2>/dev/null) || panes=""
+            if [ -z "$panes" ]; then
+                echo "Error: no tmux panes found in session '$session_name'" >&2
+                return 1
+            fi
+
+            codex_panes=()
+            while IFS=' ' read -r candidate_pane pane_command pane_tty; do
+                case "$pane_command" in
+                    *[cC][oO][dD][eE][xX]*)
+                        codex_panes+=( "$candidate_pane" )
+                        ;;
+                    *)
+                        pane_tty="${pane_tty#/dev/}"
+                        if ps -t "$pane_tty" -o args= 2>/dev/null | grep -qi '[cC][oO][dD][eE][xX]'; then
+                            codex_panes+=( "$candidate_pane" )
+                        fi
+                        ;;
+                esac
+            done <<< "$panes"
+
+            if [ "${#codex_panes[@]}" -eq 0 ]; then
+                echo "Error: no Codex pane found in tmux session '$session_name'" >&2
+                return 1
+            fi
+            if [ "${#codex_panes[@]}" -gt 1 ]; then
+                printf 'Error: multiple Codex panes found in session %s: %s\n' "$session_name" "${codex_panes[*]}" >&2
+                return 1
+            fi
+
+            pane_id="${codex_panes[0]}"
+            if ! tmux send-keys -t "$pane_id" -l -- "$message" || ! tmux send-keys -t "$pane_id" Enter; then
+                echo "Error: failed to send the message to Codex pane '$pane_id'" >&2
+                return 1
+            fi
+            sleep "$interval" || return 1
+        done
+    }
+
     # Function to set VS Code window title prefix
     setwindow() {
         local new_prefix="$1"
