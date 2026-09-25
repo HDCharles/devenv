@@ -208,7 +208,7 @@ if [ $COMMANDS_SETUP ]; then
     loop_to_codex() {
         local interval="300s"
         local message="check status and fix any problems"
-        local OPTIND=1 OPTARG opt sessions session_name panes pane_id pane_command pane_tty interval_value candidate_pane
+        local OPTIND=1 OPTARG opt sessions session_name panes pane_id pane_command pane_tty pane_screen submit_key interval_value candidate_pane
         local -a codex_panes
 
         while getopts ":t:m:" opt; do
@@ -291,8 +291,19 @@ if [ $COMMANDS_SETUP ]; then
             fi
 
             pane_id="${codex_panes[0]}"
-            if ! tmux send-keys -t "$pane_id" -l -- "$message" || ! tmux send-keys -t "$pane_id" Enter; then
-                echo "Error: failed to send the message to Codex pane '$pane_id'" >&2
+            if ! tmux send-keys -t "$pane_id" -l -- "$message"; then
+                echo "Error: failed to type the message into Codex pane '$pane_id'" >&2
+                return 1
+            fi
+            sleep 0.1
+            pane_screen=$(tmux capture-pane -p -t "$pane_id" -S -12 2>/dev/null) || pane_screen=""
+            if printf '%s\n' "$pane_screen" | grep -qi 'tab to queue message'; then
+                submit_key="Tab"
+            else
+                submit_key="Enter"
+            fi
+            if ! tmux send-keys -t "$pane_id" "$submit_key"; then
+                echo "Error: failed to submit the message to Codex pane '$pane_id'" >&2
                 return 1
             fi
             sleep "$interval" || return 1
