@@ -208,7 +208,8 @@ if [ $COMMANDS_SETUP ]; then
     loop_to_codex() {
         local interval="300s"
         local message="check status and fix any problems"
-        local OPTIND=1 OPTARG opt sessions session_name panes pane_id pane_command pane_tty pane_screen submit_key interval_value candidate_pane
+        local OPTIND=1 OPTARG opt sessions session_name panes pane_id pane_command pane_tty interval_value candidate_pane
+        local candidate_pid candidate_args candidate_thread fd_path session_file thread_id codex_bin
         local -a codex_panes
 
         while getopts ":t:m:" opt; do
@@ -247,7 +248,7 @@ if [ $COMMANDS_SETUP ]; then
             return 127
         fi
 
-        echo "Sending to the only Codex pane immediately, then every $interval. Press Ctrl-C to stop."
+        echo "Queueing to the only active Codex session immediately, then every $interval. Press Ctrl-C to stop."
         while true; do
             sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null) || sessions=""
             if [ -z "$sessions" ]; then
@@ -291,19 +292,40 @@ if [ $COMMANDS_SETUP ]; then
             fi
 
             pane_id="${codex_panes[0]}"
-            if ! tmux send-keys -t "$pane_id" -l -- "$message"; then
-                echo "Error: failed to type the message into Codex pane '$pane_id'" >&2
+            pane_tty=$(tmux display-message -p -t "$pane_id" '#{pane_tty}') || {
+                echo "Error: failed to read the tty for Codex pane '$pane_id'" >&2
+                return 1
+            }
+            pane_tty="${pane_tty#/dev/}"
+
+            codex_bin=$(type -P codex) || {
+                echo "Error: Codex CLI is not installed or not on PATH" >&2
+                return 127
+            }
+
+            thread_id=""
+            while IFS=' ' read -r candidate_pid candidate_args; do
+                for fd_path in "/proc/$candidate_pid"/fd/*; do
+                    session_file=$(readlink -- "$fd_path" 2>/dev/null) || continue
+                    if [[ "$session_file" =~ rollout-[^/]*-([[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12})\.jsonl$ ]]; then
+                        candidate_thread="${BASH_REMATCH[1]}"
+                        if [ -n "$thread_id" ] && [ "$thread_id" != "$candidate_thread" ]; then
+                            echo "Error: multiple active Codex threads found in pane '$pane_id'" >&2
+                            return 1
+                        fi
+                        thread_id="$candidate_thread"
+                        break
+                    fi
+                done
+            done < <(ps -t "$pane_tty" -o pid=,args= 2>/dev/null)
+
+            if [ -z "$thread_id" ]; then
+                echo "Error: no active Codex conversation found in pane '$pane_id' (Codex may be at the resume picker)" >&2
                 return 1
             fi
-            sleep 0.1
-            pane_screen=$(tmux capture-pane -p -t "$pane_id" -S -12 2>/dev/null) || pane_screen=""
-            if printf '%s\n' "$pane_screen" | grep -qi 'tab to queue message'; then
-                submit_key="Tab"
-            else
-                submit_key="Enter"
-            fi
-            if ! tmux send-keys -t "$pane_id" "$submit_key"; then
-                echo "Error: failed to submit the message to Codex pane '$pane_id'" >&2
+
+            if ! "$codex_bin" queue --thread "$thread_id" --message "$message"; then
+                echo "Error: failed to queue the message for Codex thread '$thread_id'" >&2
                 return 1
             fi
             sleep "$interval" || return 1
