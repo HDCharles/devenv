@@ -82,24 +82,29 @@ gcloud_setup() {
 }
 
 configure_git_identity() {
-    # Pull name from GitHub if missing
-    if [ -z "$(git config --global user.name)" ]; then
-        local gh_name
-        gh_name="$(gh api user --jq '.name // .login' 2>/dev/null)"
-        if [ -n "$gh_name" ]; then
-            git config --global user.name "$gh_name"
-            echo "Git user.name configured from GitHub: $gh_name"
-        fi
+    local update_existing="${1:-false}"
+    local gh_login gh_email current_name current_email
+
+    if ! gh_login="$(gh api user --jq '.login' 2>/dev/null)" || [ -z "$gh_login" ]; then
+        echo "Unable to get the GitHub login. Check that gh is authenticated." >&2
+        return 1
     fi
 
-    # Pull email from GitHub if missing
-    if [ -z "$(git config --global user.email)" ]; then
-        local gh_email
-        gh_email="$(gh api user/emails --jq '.[] | select(.primary) | .email' 2>/dev/null)"
-        if [ -n "$gh_email" ]; then
-            git config --global user.email "$gh_email"
-            echo "Git user.email configured from GitHub: $gh_email"
-        fi
+    if ! gh_email="$(gh api user/emails --jq '[.[] | select(.primary) | .email][0] // empty' 2>/dev/null)" || [ -z "$gh_email" ]; then
+        echo "Unable to get the primary GitHub email. Try: gh auth refresh --scopes user:email" >&2
+        return 1
+    fi
+
+    current_name="$(git config --global user.name)"
+    if [ "$update_existing" = "true" ] || [ -z "$current_name" ]; then
+        git config --global user.name "$gh_login"
+        echo "Git user.name configured from GitHub login: $gh_login"
+    fi
+
+    current_email="$(git config --global user.email)"
+    if [ "$update_existing" = "true" ] || [ -z "$current_email" ]; then
+        git config --global user.email "$gh_email"
+        echo "Git user.email configured from GitHub primary email"
     fi
 
     # Generate git commit template from base with Signed-off-by
@@ -123,9 +128,21 @@ finish_setup() {
     if [ ! -e "$HOME/.config/gcloud/application_default_credentials.json" ]; then
         gcloud_setup
     fi
-    if ! command -v gh &>/dev/null || ! gh auth status &>/dev/null; then
-        gh auth login
+    if ! command -v gh &>/dev/null; then
+        echo "GitHub CLI is not installed; install gh before running finish_setup." >&2
+        return 127
+    elif ! gh auth status &>/dev/null; then
+        gh auth login --scopes user:email || return 1
+    else
+        gh auth refresh --scopes user:email || return 1
     fi
+    if ! gh auth status &>/dev/null; then
+        echo "GitHub authentication did not complete; run finish_setup again after authenticating." >&2
+        return 1
+    fi
+
+    # Apply Git identity after login or refreshing the email scope.
+    configure_git_identity true || return 1
     source ~/.bashrc
 }
 

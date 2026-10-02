@@ -40,11 +40,11 @@ These things will work without user input (assuming no errors)
 #### Finish Setup
 These setup steps require user input
 
-11) gh auth
+11) gh auth (including the `user:email` scope)
 12) claude auth
 
 Once these authorizations are complete, additional setup steps will now run that don't require user input
-13) git configuration, template, username, email (info pulled from gh auth), difftool
+13) git configuration, template, GitHub login as `user.name`, primary GitHub email as `user.email`, difftool
 
 ## Bash Profile
 
