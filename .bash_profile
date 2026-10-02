@@ -579,7 +579,7 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     repo_refresh(){
-        local pids=() repos=("llm-compressor" "vllm" "compressed-tensors" "speculators" "llm-compressor-testing")
+        local pids=() repos=("llm-compressor" "vllm" "compressed-tensors" "speculators" "llm-compressor-testing" "research")
         for repo in "${repos[@]}"; do
             ( git -C "$HOME/repos/$repo" checkout main && git -C "$HOME/repos/$repo" pull && echo "updated repo: $repo" || echo "failed to update repo: $repo, please resolve manually" ) &
             pids+=($!)

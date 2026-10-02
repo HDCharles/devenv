@@ -21,6 +21,9 @@ clone_repos() {
     if [ ! -d "llm-compressor-testing" ]; then
         git clone https://github.com/neuralmagic/llm-compressor-testing
     fi
+    if [ ! -d "research" ]; then
+        git clone https://github.com/neuralmagic/research
+    fi
 }
 
 vllm_env_setup() {
@@ -407,6 +410,7 @@ MISSING_REPOS=()
 [ ! -d "$HOME/repos/vllm" ] && MISSING_REPOS+=("vllm")
 [ ! -d "$HOME/repos/speculators" ] && MISSING_REPOS+=("speculators")
 [ $GH_AUTHENTICATED -eq 1 ] && [ ! -d "$HOME/repos/llm-compressor-testing" ] && MISSING_REPOS+=("llm-compressor-testing")
+[ $GH_AUTHENTICATED -eq 1 ] && [ ! -d "$HOME/repos/research" ] && MISSING_REPOS+=("research")
 
 if [ ${#MISSING_REPOS[@]} -gt 0 ]; then
     echo "Missing repos: ${MISSING_REPOS[*]}"
