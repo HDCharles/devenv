@@ -105,7 +105,7 @@ configure_git_identity() {
     fi
 
     current_email="$(git config --global user.email)"
-    if [ "$update_existing" = "true" ] || [ -z "$current_email" ]; then
+    if [ "$update_existing" = "true" ] || [[ ! "$current_email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
         git config --global user.email "$gh_email"
         echo "Git user.email configured from GitHub primary email"
     fi
