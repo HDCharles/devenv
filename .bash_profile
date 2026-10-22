@@ -336,10 +336,25 @@ if [ $COMMANDS_SETUP ]; then
     setwindow() {
         local new_prefix="$1"
         local settings_file="$HOME/.vscode-server/data/Machine/settings.json"
+        local gpu_status gpu_rows free_gpus
 
         if [ -z "$new_prefix" ]; then
             echo "Usage: setwindow <prefix>"
             return 1
+        fi
+
+        # Include the current free GPU count when setting the title. The
+        # background watcher keeps this value refreshed after this command.
+        if command -v canhazgpu >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1 \
+            && gpu_status=$(timeout 10 canhazgpu status 2>/dev/null); then
+            gpu_status=$(printf '%s' "$gpu_status" | tr -d '\r')
+            gpu_rows=$(printf '%s\n' "$gpu_status" | grep -Ec '^ [0-9]+ ' || true)
+            if [ "$gpu_rows" -gt 0 ]; then
+                free_gpus=$(printf '%s\n' "$gpu_status" | grep -c 'AVAILABLE' || true)
+                if [[ "$new_prefix" =~ ^([[:alpha:]]+)([0-9]*)(.*)$ ]]; then
+                    new_prefix="${BASH_REMATCH[1]}${free_gpus}${BASH_REMATCH[3]}"
+                fi
+            fi
         fi
 
         # Create settings directory if it doesn't exist
@@ -691,4 +706,14 @@ fi
 # but want to be chekced on every shell start
 if [ $ONE_TIME_SETUP ]; then
     safe_source "$DEV_ENV_DIR/.one_time_setup"
+fi
+
+# Keep the GPU count in the VS Code window title up to date. The watcher uses
+# a lock, so sourcing this profile from several terminals still leaves one
+# background process running for this user.
+if [ -n "${DEV_ENV_DIR:-}" ] && [ -f "$DEV_ENV_DIR/tools/gpu_title_watch.sh" ]; then
+    if ! pgrep -u "$(id -u)" -f 'gpu_title_watch\.sh --daemon' >/dev/null 2>&1; then
+        nohup bash "$DEV_ENV_DIR/tools/gpu_title_watch.sh" --daemon \
+            </dev/null >/dev/null 2>&1 &
+    fi
 fi

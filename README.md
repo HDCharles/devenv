@@ -63,7 +63,7 @@ This consists of 4 parts
     - ref - refresh environment
     - seebash - show the .bash_profile 
     - godev - go to the devenv repo folder
-    - setwin - setwindow name, doesn't work with spaces (I use this to set the vscode window names so i know what i'm working on in each devserver)
+    - setwin - set the VS Code window title prefix and add the current free GPU count (I use this to identify each devserver). A background watcher waits for a title prefix, then refreshes that number every 30 minutes; for example, `Asano_imat_mx` becomes `Asano4_imat_mx` when four GPUs are free.
   - COMMANDS - like aliases but more complicated (ordered by usefulness)
     - res, rel, run - all are shortcuts for chg functionality, short for reserve, release and run
       - `res 2 30m` reserves 2 gpus for 30 minutes
