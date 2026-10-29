@@ -26,7 +26,7 @@ once the automatic setup completes you will be asked to run `finish_setup` to do
 These things will work without user input (assuming no errors)
 
 1) you won't have to manually source again, a .bash_profile source will be added to your .bashrc (### OTS .BASHRC CALLS .BASH_PROFILE ###)
-2) it will create /home/repos and clone llm-compressor, compressed-tensors, vllm, speculators and llm-compressor-testing repos
+2) it will create /home/repos and clone llm-compressor, compressed-tensors, vllm, speculators, llm-compressor-testing, research, and evals-refresh repos
 3) it will set up a rhdev virtual environment (using uv) and install llm-compressor and compressed-tensors. This env is used to quantize models
 4) it will set up a vllm virtual environment (using uv) and install vllm. This env is used for vllm evaluation of models
 5) install [fzf](https://github.com/junegunn/fzf)
