@@ -594,13 +594,67 @@ if [ $COMMANDS_SETUP ]; then
     }
 
     repo_refresh(){
-        local pids=() repos=("llm-compressor" "vllm" "compressed-tensors" "speculators" "llm-compressor-testing" "research" "evals-refresh")
+        local pids=() results=() repo repo_path branch status status_text failures=0 i
+        local red=$'\033[31m' reset=$'\033[0m'
+        local results_dir monitor_was_enabled=0
+        local repos=("llm-compressor" "vllm" "compressed-tensors" "speculators" "llm-compressor-testing" "research" "evals-refresh")
+        results_dir=$(mktemp -d "${TMPDIR:-/tmp}/repo_refresh.XXXXXX") || return 1
+
+        case "$-" in
+            *m*) monitor_was_enabled=1; set +m ;;
+        esac
+
         for repo in "${repos[@]}"; do
-            ( git -C "$HOME/repos/$repo" checkout main && git -C "$HOME/repos/$repo" pull && echo "updated repo: $repo" || echo "failed to update repo: $repo, please resolve manually" ) &
-            pids+=($!)
+            repo_path="$HOME/repos/$repo"
+            (
+                if git -C "$repo_path" checkout main >/dev/null 2>&1 &&
+                   git -C "$repo_path" pull >/dev/null 2>&1; then
+                    status="updated"
+                else
+                    status="failure"
+                fi
+
+                branch=$(git -C "$repo_path" branch --show-current 2>/dev/null)
+                if [ -z "$branch" ]; then
+                    if git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+                        branch="detached"
+                    else
+                        branch="unknown"
+                    fi
+                fi
+                printf '%s\n%s\n' "$status" "$branch" > "$results_dir/$repo"
+            ) &
+            pids+=("$!")
         done
-        for pid in "${pids[@]}"; do wait "$pid"; done
-        echo "repos updated, to install use \`rhdev_install\`"
+
+        for i in "${!pids[@]}"; do
+            repo_path="$results_dir/${repos[$i]}"
+            if ! wait "${pids[$i]}"; then
+                printf 'failure\nunknown\n' > "$repo_path"
+            fi
+            if [ -r "$repo_path" ]; then
+                IFS= read -r status < "$repo_path"
+                branch=$(sed -n '2p' "$repo_path")
+            else
+                status="failure"
+                branch="unknown"
+            fi
+            if [ "$status" = "updated" ]; then
+                status_text="updated"
+            else
+                failures=1
+                status_text="${red}failure${reset}"
+            fi
+            results+=("repo: ${repos[$i]} - $status_text - $branch")
+            rm -f -- "$repo_path"
+        done
+
+        rmdir -- "$results_dir" 2>/dev/null
+        if ((monitor_was_enabled)); then
+            set -m
+        fi
+        printf '%s\n' "${results[@]}"
+        return "$failures"
     }
 
     rhdev_install() {
