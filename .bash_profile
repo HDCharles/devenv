@@ -682,17 +682,50 @@ if [ $COMMANDS_SETUP ]; then
         echo "vllm environment packages installed main (precompiled)"
     }
 
-    vllm_install_nightly() {
-        . ~/vllm/bin/activate
+    _vllm_install_torch_packages_from_pypi() {
+        local requirements_file="$HOME/repos/vllm/requirements/cuda.txt"
+        local package
+        local package_req
+        local package_reqs=()
 
-        uv pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+        if [ ! -f "$requirements_file" ]; then
+            echo "Error: could not find $requirements_file" >&2
+            return 1
+        fi
+
+        for package in torchaudio torchvision; do
+            package_req=$(awk -v package="$package" '
+                $1 ~ ("^" package "(==|>=|<=|~=|!=|>|<)") { print $1; exit }
+            ' "$requirements_file")
+            if [ -z "$package_req" ]; then
+                echo "Error: no pinned $package requirement found in $requirements_file" >&2
+                return 1
+            fi
+            package_reqs+=("$package_req")
+        done
+
+        echo "Installing ${package_reqs[*]} from PyPI"
+        env -u UV_TORCH_BACKEND uv pip install \
+            --no-config \
+            --python "$HOME/vllm/bin/python" \
+            --no-deps \
+            --default-index https://pypi.org/simple \
+            "${package_reqs[@]}"
+    }
+
+    vllm_install_nightly() {
+        . ~/vllm/bin/activate || return $?
+
+        _vllm_install_torch_packages_from_pypi || return $?
+        uv pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly || return $?
         echo "vllm environment packages installed nightly (precompiled)"
     }
 
     vllm_install_source() {
-        . ~/vllm/bin/activate
+        . ~/vllm/bin/activate || return $?
 
-        cd ~/repos/vllm
+        _vllm_install_torch_packages_from_pypi || return $?
+        cd ~/repos/vllm || return $?
 
         # Find the most recent origin/main commit that has precompiled wheels
         local variant
@@ -714,11 +747,11 @@ print({12: 'cu129', 13: 'cu130'}.get(major, 'cu129'))
 
         if [ -z "$wheel_commit" ]; then
             echo "WARNING: No precompiled wheel found in last 20 commits, building from source"
-            VLLM_USE_PRECOMPILED=0 uv pip install --editable . --prerelease=allow
+            VLLM_USE_PRECOMPILED=0 uv pip install --editable . --prerelease=allow || return $?
         else
             echo "Using precompiled wheel from commit $(git log --oneline -1 "$wheel_commit")"
             VLLM_USE_PRECOMPILED=1 VLLM_PRECOMPILED_WHEEL_COMMIT="$wheel_commit" \
-                uv pip install --editable . --prerelease=allow
+                uv pip install --editable . --prerelease=allow || return $?
         fi
 
         # Install flashinfer packages that setup.py skips (not on PyPI)
@@ -726,7 +759,7 @@ print({12: 'cu129', 13: 'cu130'}.get(major, 'cu129'))
         fi_pkgs=$(grep -E '^flashinfer-' requirements/cuda.txt | tr '\n' ' ')
         if [ -n "$fi_pkgs" ]; then
             echo "Installing flashinfer packages: $fi_pkgs"
-            uv pip install $fi_pkgs --extra-index-url https://flashinfer.ai/whl/
+            uv pip install $fi_pkgs --extra-index-url https://flashinfer.ai/whl/ || return $?
         fi
 
         cd ..
