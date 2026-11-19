@@ -40,6 +40,7 @@ update_state() {
        --argjson as "$EMA_ALPHA_SLOW" \
        --arg ts "$(date -Iseconds)" \
        --argjson epoch "$(date +%s)" \
+       --argjson poll "$POLL_INTERVAL" \
        '(.[$h] // {}) as $old |
        (($old.samples) // 0) as $t |
        ([1, (pow(2; -$t) + $af)] | min) as $eaf |
@@ -58,7 +59,9 @@ update_state() {
            samples: ($t + 1),
            total_polls: (([($old.total_polls // 0), $t] | max) + 1),
            first_seen: (($old.first_seen) // $ts),
-           first_seen_epoch: (($old.first_seen_epoch) // $epoch),
+           first_seen_epoch: (if $old.first_seen_epoch then
+               ([$old.first_seen_epoch, $epoch - (($t + 1) * $poll)] | min)
+             else ($epoch - (($t + 1) * $poll)) end),
            last_gpus_used: $gpus,
            last_total_gpus: $total,
            last_seen: $ts,
@@ -135,7 +138,8 @@ process_single_result() {
            --arg ts "$(date -Iseconds)" \
            --argjson epoch "$(date +%s)" \
            --arg reason "$reason" \
-           '.[$h].last_seen = $ts | .[$h].unreachable = true | .[$h].unreachable_reason = $reason | .[$h].total_polls = ([(.[$h].total_polls // 0), (.[$h].samples // 0)] | max) + 1 | .[$h].first_seen = ((.[$h].first_seen) // $ts) | .[$h].first_seen_epoch = ((.[$h].first_seen_epoch) // $epoch)' \
+           --argjson poll "$POLL_INTERVAL" \
+           '(.[$h].samples // 0) as $s | .[$h].last_seen = $ts | .[$h].unreachable = true | .[$h].unreachable_reason = $reason | .[$h].total_polls = ([(.[$h].total_polls // 0), $s] | max) + 1 | .[$h].first_seen = ((.[$h].first_seen) // $ts) | .[$h].first_seen_epoch = (if .[$h].first_seen_epoch then ([.[$h].first_seen_epoch, $epoch - (($s + 1) * $poll)] | min) else ($epoch - (($s + 1) * $poll)) end)' \
            "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
     fi
 }

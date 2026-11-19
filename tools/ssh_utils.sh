@@ -134,8 +134,20 @@ ssh_sync_config() {
 
         echo "⏳ Waiting for run ${new_run_id} to complete..."
         if ! gh run watch "$new_run_id" -R "${INVENTORY_REPO}" --exit-status >/dev/null 2>&1; then
-            echo "⚠️  Workflow run failed."
-            return 1
+            # `gh run watch` can fail transiently while polling even though the
+            # workflow completed successfully. Confirm the authoritative run
+            # conclusion before reporting a failure.
+            local run_result
+            run_result=$(gh run view "$new_run_id" -R "${INVENTORY_REPO}" --json status,conclusion \
+                --jq 'if .status == "completed" then .conclusion else .status end' 2>/dev/null)
+            if [ "$run_result" != "success" ]; then
+                if [ -n "$run_result" ]; then
+                    echo "⚠️  Workflow run did not succeed (status: ${run_result})."
+                else
+                    echo "⚠️  Could not verify workflow run status after waiting."
+                fi
+                return 1
+            fi
         fi
 
         run_id="$new_run_id"
